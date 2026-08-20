@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.2.1";
+const PENGUFRESH_CARD_VERSION = "0.2.2";
 
 const PF_I18N = {
   de: {
@@ -119,8 +119,14 @@ class PenguFreshCard extends HTMLElement {
 
   static getStubConfig(hass) {
     const first = findPenguFreshInstances(hass)[0];
-    if (!first) return {};
+    if (!first) {
+      return { type: "custom:pengufresh-card" };
+    }
+    // Home Assistant normally adds the selected custom card type itself, but
+    // keeping it in the stub as well makes the card robust across frontend
+    // versions and prevents the YAML editor from receiving a typeless config.
     return {
+      type: "custom:pengufresh-card",
       humidity_entity: first.humidity,
       cooling_entity: first.cooling,
     };
@@ -134,7 +140,7 @@ class PenguFreshCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { ...config };
+    this._config = { type: "custom:pengufresh-card", ...config };
     this._render();
   }
 
@@ -371,14 +377,15 @@ class PenguFreshCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { ...config };
+    this._config = { type: "custom:pengufresh-card", ...config };
     this._render();
   }
 
   _fireConfigChanged(config) {
-    this._config = config;
+    const nextConfig = { type: "custom:pengufresh-card", ...config };
+    this._config = nextConfig;
     const event = new Event("config-changed", { bubbles: true, composed: true });
-    event.detail = { config };
+    event.detail = { config: nextConfig };
     this.dispatchEvent(event);
   }
 
