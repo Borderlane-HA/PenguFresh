@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.2.3";
+const PENGUFRESH_CARD_VERSION = "0.2.5";
 
 const PF_DEFAULT_LAYOUT = "full_large";
 const PF_LAYOUTS = {
@@ -8,6 +8,22 @@ const PF_LAYOUTS = {
   half_compact: { columns: 6, rows: 1 },
   half_medium: { columns: 6, rows: 3 },
   half_large: { columns: 6, rows: 6 },
+};
+
+const PF_DEFAULTS = {
+  show_title: false,
+  show_advice: true,
+  show_outdoor: true,
+  show_dew_point: true,
+  show_window: true,
+  show_humidity: true,
+  show_cooling: true,
+  show_rooms: true,
+  show_reasons: true,
+  color_mode: "auto",
+  background_color: "#0f766e",
+  text_color: "#ffffff",
+  accent_color: "#67e8f9",
 };
 
 const PF_I18N = {
@@ -32,7 +48,7 @@ const PF_I18N = {
     cardTitle: "PenguFresh",
     editorTitle: "PenguFresh-Instanz",
     noInstance: "Keine PenguFresh-Instanz gefunden",
-    customTitle: "Kartentitel (optional)",
+    customTitle: "Eigener Titel (optional)",
     layout: "Layout",
     layoutFullCompact: "Vollbreite – Kompakt",
     layoutFullMedium: "Vollbreite – Mittel",
@@ -40,10 +56,29 @@ const PF_I18N = {
     layoutHalfCompact: "Halbe Breite – Kompakt",
     layoutHalfMedium: "Halbe Breite – Mittel",
     layoutHalfLarge: "Halbe Breite – Groß",
-    layoutHint: "In Abschnitts-Dashboards setzt das Preset Breite und Höhe automatisch. Manuelles Größenändern bleibt möglich; PenguFresh passt die Informationsdichte an.",
+    layoutHint: "Kleine Layouts blenden automatisch Details aus. Manuelles Größenändern im Abschnitts-Dashboard bleibt möglich.",
     setup: "Wähle im Karteneditor eine PenguFresh-Instanz aus.",
     on: "empfohlen",
     off: "nicht nötig",
+    content: "Inhalt",
+    colors: "Farben",
+    showTitle: "Titel anzeigen",
+    showAdvice: "Lüftungsempfehlung anzeigen",
+    showOutdoor: "Außenwerte anzeigen",
+    showDewPoint: "Taupunkt anzeigen",
+    showWindow: "Fenstergrafik / Animation anzeigen",
+    showHumidity: "Status Feuchtigkeit anzeigen",
+    showCooling: "Status Abkühlen anzeigen",
+    showRooms: "Empfohlene Räume anzeigen",
+    showReasons: "Begründung in Statusfeldern anzeigen",
+    colorMode: "Farbmodus",
+    colorAuto: "Automatisch nach Status",
+    colorTheme: "Home-Assistant-Theme",
+    colorCustom: "Eigene Farben",
+    backgroundColor: "Hintergrund",
+    textColor: "Text",
+    accentColor: "Akzent",
+    autoColorHint: "Automatik: Blau = Kühlen, Grün = Entfeuchten, Türkis = beides, Orange = draußen zu warm / geschlossen lassen.",
   },
   en: {
     openBoth: "Ventilate now – cool & dehumidify",
@@ -66,7 +101,7 @@ const PF_I18N = {
     cardTitle: "PenguFresh",
     editorTitle: "PenguFresh instance",
     noInstance: "No PenguFresh instance found",
-    customTitle: "Card title (optional)",
+    customTitle: "Custom title (optional)",
     layout: "Layout",
     layoutFullCompact: "Full width – Compact",
     layoutFullMedium: "Full width – Medium",
@@ -74,16 +109,58 @@ const PF_I18N = {
     layoutHalfCompact: "Half width – Compact",
     layoutHalfMedium: "Half width – Medium",
     layoutHalfLarge: "Half width – Large",
-    layoutHint: "In Sections dashboards the preset automatically sets width and height. Manual resizing is still possible; PenguFresh adapts the information density.",
+    layoutHint: "Small layouts automatically hide details. Manual resizing in Sections dashboards is still supported.",
     setup: "Select a PenguFresh instance in the card editor.",
     on: "recommended",
     off: "not needed",
+    content: "Content",
+    colors: "Colors",
+    showTitle: "Show title",
+    showAdvice: "Show ventilation recommendation",
+    showOutdoor: "Show outdoor values",
+    showDewPoint: "Show dew point",
+    showWindow: "Show window graphic / animation",
+    showHumidity: "Show humidity status",
+    showCooling: "Show cooling status",
+    showRooms: "Show recommended rooms",
+    showReasons: "Show reasons in status tiles",
+    colorMode: "Color mode",
+    colorAuto: "Automatic by status",
+    colorTheme: "Home Assistant theme",
+    colorCustom: "Custom colors",
+    backgroundColor: "Background",
+    textColor: "Text",
+    accentColor: "Accent",
+    autoColorHint: "Automatic: blue = cooling, green = dehumidifying, teal = both, orange = outside too warm / keep closed.",
   },
 };
 
 function pfLanguage(hass) {
   const lang = hass?.locale?.language || hass?.language || "en";
   return String(lang).toLowerCase().startsWith("de") ? "de" : "en";
+}
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function pfValue(config, key) {
+  return config?.[key] ?? PF_DEFAULTS[key];
+}
+
+function pfBool(config, key) {
+  return Boolean(pfValue(config, key));
+}
+
+function pfCleanInstanceName(name) {
+  const raw = String(name || "").trim();
+  const cleaned = raw.replace(/^PenguFresh\s*(?:[-–—:]\s*)?/i, "").trim();
+  return cleaned || raw || "";
 }
 
 function isPenguFreshHumidity(stateObj) {
@@ -131,18 +208,8 @@ function pairForEntity(hass, entityId) {
   return findPenguFreshInstances(hass).find((item) => item.id === entryId) || null;
 }
 
-function esc(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function pfLayoutKey(config) {
   if (config?.layout && PF_LAYOUTS[config.layout]) return config.layout;
-
   const columns = config?.grid_options?.columns;
   const rows = Number(config?.grid_options?.rows);
   if (rows && columns !== undefined) {
@@ -150,7 +217,6 @@ function pfLayoutKey(config) {
     const size = rows <= 1 ? "compact" : rows <= 3 ? "medium" : "large";
     return `${isHalf ? "half" : "full"}_${size}`;
   }
-
   return PF_DEFAULT_LAYOUT;
 }
 
@@ -159,13 +225,15 @@ function pfEffectiveLayout(config) {
   const preset = PF_LAYOUTS[key] || PF_LAYOUTS[PF_DEFAULT_LAYOUT];
   const rawRows = config?.grid_options?.rows;
   const rawColumns = config?.grid_options?.columns;
-
   const rows = Number.isFinite(Number(rawRows)) ? Number(rawRows) : preset.rows;
   const columns = rawColumns !== undefined ? rawColumns : preset.columns;
-  const density = rows <= 1 ? "compact" : rows <= 3 ? "medium" : "large";
-  const width = columns === "full" || Number(columns) > 6 ? "full" : "half";
-
-  return { key, rows, columns, density, width };
+  return {
+    key,
+    rows,
+    columns,
+    density: rows <= 1 ? "compact" : rows <= 3 ? "medium" : "large",
+    width: columns === "full" || Number(columns) > 6 ? "full" : "half",
+  };
 }
 
 function pfLayoutOptions(t) {
@@ -177,6 +245,11 @@ function pfLayoutOptions(t) {
     ["half_medium", t.layoutHalfMedium],
     ["half_large", t.layoutHalfLarge],
   ];
+}
+
+function pfSafeColor(value, fallback) {
+  const color = String(value || "").trim();
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
 }
 
 class PenguFreshCard extends HTMLElement {
@@ -193,11 +266,7 @@ class PenguFreshCard extends HTMLElement {
       grid_options: { columns: preset.columns, rows: preset.rows },
     };
     if (!first) return config;
-    return {
-      ...config,
-      humidity_entity: first.humidity,
-      cooling_entity: first.cooling,
-    };
+    return { ...config, humidity_entity: first.humidity, cooling_entity: first.cooling };
   }
 
   constructor() {
@@ -242,23 +311,17 @@ class PenguFreshCard extends HTMLElement {
 
   _cardData() {
     const t = PF_I18N[pfLanguage(this._hass)];
-    const hum = this._config.humidity_entity
-      ? this._hass.states[this._config.humidity_entity]
-      : null;
-    const cool = this._config.cooling_entity
-      ? this._hass.states[this._config.cooling_entity]
-      : null;
-
+    const hum = this._config.humidity_entity ? this._hass.states[this._config.humidity_entity] : null;
+    const cool = this._config.cooling_entity ? this._hass.states[this._config.cooling_entity] : null;
     if (!hum && !cool) return { t, hum, cool, empty: true };
 
-    const available = [hum, cool].some(
-      (obj) => obj && !["unknown", "unavailable"].includes(obj.state)
-    );
+    const available = [hum, cool].some((obj) => obj && !["unknown", "unavailable"].includes(obj.state));
     const humOn = hum?.state === "on";
     const coolOn = cool?.state === "on";
     const shouldOpen = humOn || coolOn;
     const attrs = cool?.attributes || hum?.attributes || {};
-    const title = this._config.title || attrs.pengufresh_instance || t.cardTitle;
+    const instanceName = pfCleanInstanceName(attrs.pengufresh_instance || "");
+    const title = this._config.title || instanceName;
 
     let advice = t.keepClosed;
     if (!available) advice = t.unavailable;
@@ -279,350 +342,314 @@ class PenguFreshCard extends HTMLElement {
     const weatherIcon = isCoolOutside ? "❄️" : "☀️";
     const tempLabel = isCoolOutside ? t.coolOutside : t.warmOutside;
     const moistureLabel = humOn ? t.dryOutside : isHumidOutside ? t.humidOutside : "";
-    const outdoorClass = isCoolOutside ? "cool" : "warm";
-
-    const rooms = Array.from(
-      new Set([
-        ...(hum?.attributes?.recommended_rooms || []),
-        ...(cool?.attributes?.recommended_rooms || []),
-      ])
-    );
+    const rooms = Array.from(new Set([
+      ...(hum?.attributes?.recommended_rooms || []),
+      ...(cool?.attributes?.recommended_rooms || []),
+    ]));
 
     const outdoorValues = [
-      outTemp !== undefined ? `${esc(outTemp)} ${esc(outTempUnit)}` : null,
-      outRh !== undefined ? `${esc(outRh)} %` : null,
+      outTemp !== undefined ? `${outTemp} ${outTempUnit}` : null,
+      outRh !== undefined ? `${outRh} %` : null,
     ].filter(Boolean).join(" · ");
+    const dewValue = dew !== undefined ? `${dew} ${outTempUnit}` : "–";
 
-    const dewValue = dew !== undefined ? `${esc(dew)} ${esc(outTempUnit)}` : "–";
+    let statusClass = "status-neutral";
+    if (humOn && coolOn) statusClass = "status-both";
+    else if (coolOn) statusClass = "status-cooling";
+    else if (humOn) statusClass = "status-humidity";
+    else if (!isCoolOutside) statusClass = "status-warm";
 
     return {
-      t,
-      hum,
-      cool,
-      available,
-      humOn,
-      coolOn,
-      shouldOpen,
-      attrs,
-      title,
-      advice,
-      outTemp,
-      outTempUnit,
-      outRh,
-      dewValue,
-      weatherIcon,
-      tempLabel,
-      moistureLabel,
-      outdoorClass,
-      rooms,
-      outdoorValues,
+      t, hum, cool, available, humOn, coolOn, shouldOpen, attrs, title, advice,
+      outTemp, outTempUnit, outRh, dewValue, weatherIcon, tempLabel, moistureLabel,
+      rooms, outdoorValues, statusClass,
     };
+  }
+
+  _appearance(data) {
+    const mode = pfValue(this._config, "color_mode");
+    if (mode === "custom") {
+      const bg = pfSafeColor(this._config.background_color, PF_DEFAULTS.background_color);
+      const text = pfSafeColor(this._config.text_color, PF_DEFAULTS.text_color);
+      const accent = pfSafeColor(this._config.accent_color, PF_DEFAULTS.accent_color);
+      return {
+        classes: "color-custom",
+        style: `--pf-bg:${bg};--pf-fg:${text};--pf-accent:${accent};`,
+      };
+    }
+    if (mode === "theme") return { classes: "color-theme", style: "" };
+    return { classes: `color-auto ${data.statusClass}`, style: "" };
   }
 
   _render() {
     if (!this.shadowRoot || !this._hass) return;
-
     const data = this._cardData();
     const layout = pfEffectiveLayout(this._config);
 
     if (data.empty) {
-      this.shadowRoot.innerHTML = `
-        <ha-card>
-          <div class="empty"><strong>${data.t.cardTitle}</strong><span>${data.t.setup}</span></div>
-        </ha-card>
-        <style>${this._styles()}</style>`;
+      this.shadowRoot.innerHTML = `<ha-card><div class="empty"><span>${esc(data.t.setup)}</span></div></ha-card><style>${this._styles()}</style>`;
       return;
     }
 
-    if (layout.density === "compact") {
-      this._renderCompact(data, layout);
-    } else if (layout.density === "medium") {
-      this._renderMedium(data, layout);
-    } else {
-      this._renderLarge(data, layout);
-    }
+    if (layout.density === "compact") this._renderCompact(data, layout);
+    else if (layout.density === "medium") this._renderMedium(data, layout);
+    else this._renderLarge(data, layout);
+  }
+
+  _titleHtml(data, className = "title") {
+    if (!pfBool(this._config, "show_title") || !data.title) return "";
+    return `<div class="${className}">${esc(data.title)}</div>`;
+  }
+
+  _adviceHtml(data, className = "advice") {
+    if (!pfBool(this._config, "show_advice")) return "";
+    return `<div class="${className}">${esc(data.advice)}</div>`;
   }
 
   _renderCompact(data, layout) {
-    const { t, title, shouldOpen, advice, outdoorClass, weatherIcon, outTemp, outTempUnit, outRh, humOn, coolOn } = data;
-    const action = shouldOpen ? t.ventilate : t.closed;
-    const actionIcon = shouldOpen ? "🪟↗" : "🪟✓";
-    const outside = [
-      outTemp !== undefined ? `${esc(outTemp)} ${esc(outTempUnit)}` : null,
-      outRh !== undefined ? `${esc(outRh)}%` : null,
-    ].filter(Boolean).join(" · ");
+    const a = this._appearance(data);
+    const showOutdoor = pfBool(this._config, "show_outdoor");
+    const showHumidity = pfBool(this._config, "show_humidity");
+    const showCooling = pfBool(this._config, "show_cooling");
+    const showAdvice = pfBool(this._config, "show_advice");
+    const action = data.shouldOpen ? data.t.ventilate : data.t.closed;
 
     this.shadowRoot.innerHTML = `
-      <ha-card class="pf-card compact-card ${outdoorClass} ${layout.width}">
-        <div class="compact-row" title="${esc(advice)}">
-          <div class="compact-brand"><span class="penguin">🐧</span><strong>${esc(title)}</strong></div>
-          <div class="compact-weather"><span>${weatherIcon}</span><span>${outside || "–"}</span></div>
-          <div class="compact-flags" aria-label="${esc(advice)}">
-            <span class="mini-flag ${humOn ? "active" : ""}">💧</span>
-            <span class="mini-flag ${coolOn ? "active" : ""}">🌡️</span>
+      <ha-card class="pf-card compact-card ${layout.width} ${a.classes}" style="${a.style}">
+        <div class="compact-row">
+          ${this._titleHtml(data, "compact-title")}
+          ${showOutdoor ? `<div class="compact-weather"><span>${data.weatherIcon}</span><strong>${esc(data.outdoorValues || "–")}</strong></div>` : ""}
+          ${(showHumidity || showCooling) ? `<div class="compact-flags">
+            ${showHumidity ? `<span class="mini-flag ${data.humOn ? "active" : ""}" title="${esc(data.t.humidity)}">💧</span>` : ""}
+            ${showCooling ? `<span class="mini-flag ${data.coolOn ? "active" : ""}" title="${esc(data.t.cooling)}">🌡️</span>` : ""}
+          </div>` : ""}
+          <div class="compact-action ${data.shouldOpen ? "active" : "inactive"}" title="${esc(data.advice)}">
+            <span>${data.shouldOpen ? "↗" : "✓"}</span><strong>${esc(showAdvice ? data.advice : action)}</strong>
           </div>
-          <div class="compact-action ${shouldOpen ? "active" : "inactive"}"><span>${actionIcon}</span><strong>${esc(action)}</strong></div>
         </div>
-      </ha-card>
-      <style>${this._styles()}</style>`;
+      </ha-card><style>${this._styles()}</style>`;
   }
 
   _renderMedium(data, layout) {
-    const { t, hum, cool, title, shouldOpen, advice, outdoorClass, weatherIcon, outdoorValues, humOn, coolOn } = data;
+    const a = this._appearance(data);
+    const showOutdoor = pfBool(this._config, "show_outdoor");
+    const showWindow = pfBool(this._config, "show_window");
+    const showHumidity = pfBool(this._config, "show_humidity");
+    const showCooling = pfBool(this._config, "show_cooling");
+
     this.shadowRoot.innerHTML = `
-      <ha-card class="pf-card medium-card ${outdoorClass} ${layout.width} ${shouldOpen ? "is-open" : "is-closed"}">
+      <ha-card class="pf-card medium-card ${layout.width} ${a.classes} ${data.shouldOpen ? "is-open" : "is-closed"}" style="${a.style}">
         <div class="medium-hero">
           <div class="medium-copy">
-            <div class="brand">🐧 ${esc(title)}</div>
-            <div class="advice">${esc(advice)}</div>
-            <div class="medium-weather"><span>${weatherIcon}</span><strong>${outdoorValues || "–"}</strong></div>
+            ${this._titleHtml(data, "medium-title")}
+            ${this._adviceHtml(data)}
+            ${showOutdoor ? `<div class="medium-weather"><span>${data.weatherIcon}</span><strong>${esc(data.outdoorValues || "–")}</strong></div>` : ""}
           </div>
-          <div class="window-wrap medium-window ${shouldOpen ? "open" : "closed"}" aria-label="${esc(advice)}">
-            ${this._windowHtml()}
-          </div>
+          ${showWindow ? `<div class="window-wrap medium-window ${data.shouldOpen ? "open" : "closed"}" aria-label="${esc(data.advice)}">${this._windowHtml()}</div>` : ""}
         </div>
-        <div class="medium-status-grid">
-          ${this._mediumStatus(t.humidity, "💧", humOn, hum, "humidity", t)}
-          ${this._mediumStatus(t.cooling, "🌡️", coolOn, cool, "cooling", t)}
-        </div>
-      </ha-card>
-      <style>${this._styles()}</style>`;
+        ${(showHumidity || showCooling) ? `<div class="medium-status-grid">
+          ${showHumidity ? this._mediumStatus(data.t.humidity, "💧", data.humOn, data.hum, "humidity", data.t) : ""}
+          ${showCooling ? this._mediumStatus(data.t.cooling, "🌡️", data.coolOn, data.cool, "cooling", data.t) : ""}
+        </div>` : ""}
+      </ha-card><style>${this._styles()}</style>`;
 
-    this.shadowRoot.querySelector('[data-kind="humidity"]')?.addEventListener("click", () => this._moreInfo(hum?.entity_id));
-    this.shadowRoot.querySelector('[data-kind="cooling"]')?.addEventListener("click", () => this._moreInfo(cool?.entity_id));
+    this._bindStatusClicks(data);
   }
 
   _renderLarge(data, layout) {
-    const {
-      t, hum, cool, title, shouldOpen, advice, outdoorClass, weatherIcon, outdoorValues,
-      tempLabel, moistureLabel, dewValue, humOn, coolOn, rooms,
-    } = data;
+    const a = this._appearance(data);
+    const showOutdoor = pfBool(this._config, "show_outdoor");
+    const showDew = showOutdoor && pfBool(this._config, "show_dew_point");
+    const showWindow = pfBool(this._config, "show_window");
+    const showHumidity = pfBool(this._config, "show_humidity");
+    const showCooling = pfBool(this._config, "show_cooling");
+    const showRooms = pfBool(this._config, "show_rooms");
 
     this.shadowRoot.innerHTML = `
-      <ha-card class="pf-card large-card ${outdoorClass} ${layout.width} ${shouldOpen ? "is-open" : "is-closed"}">
-        <div class="hero ${outdoorClass}">
+      <ha-card class="pf-card large-card ${layout.width} ${a.classes} ${data.shouldOpen ? "is-open" : "is-closed"}" style="${a.style}">
+        <div class="hero">
           <div class="topbar">
-            <div>
-              <div class="brand">🐧 ${esc(title)}</div>
-              <div class="advice">${esc(advice)}</div>
+            <div class="headline">
+              ${this._titleHtml(data)}
+              ${this._adviceHtml(data)}
             </div>
-            <div class="outside-pill">
-              <span class="weather-icon">${weatherIcon}</span>
-              <div>
-                <strong>${esc(t.outdoor)}</strong>
-                <span>${outdoorValues || "–"}</span>
-              </div>
-            </div>
+            ${showOutdoor ? `<div class="outside-pill"><span class="weather-icon">${data.weatherIcon}</span><div><strong>${esc(data.t.outdoor)}</strong><span>${esc(data.outdoorValues || "–")}</span></div></div>` : ""}
           </div>
-
-          <div class="scene">
-            <div class="outside-copy">
-              <span>${esc(tempLabel)}</span>
-              ${moistureLabel ? `<span>💧 ${esc(moistureLabel)}</span>` : ""}
-              <span>${esc(t.dewPoint)} ${dewValue}</span>
-            </div>
-            <div class="window-wrap ${shouldOpen ? "open" : "closed"}" aria-label="${esc(advice)}">
-              ${this._windowHtml()}
-            </div>
-          </div>
+          ${(showWindow || showOutdoor) ? `<div class="scene">
+            ${showOutdoor ? `<div class="outside-copy"><span>${esc(data.tempLabel)}</span>${data.moistureLabel ? `<span>💧 ${esc(data.moistureLabel)}</span>` : ""}${showDew ? `<span>${esc(data.t.dewPoint)} ${esc(data.dewValue)}</span>` : ""}</div>` : ""}
+            ${showWindow ? `<div class="window-wrap ${data.shouldOpen ? "open" : "closed"}" aria-label="${esc(data.advice)}">${this._windowHtml()}</div>` : ""}
+          </div>` : ""}
         </div>
+        ${((showHumidity || showCooling) || showRooms) ? `<div class="content">
+          ${(showHumidity || showCooling) ? `<div class="status-grid ${showHumidity && showCooling ? "two" : "one"}">
+            ${showHumidity ? this._statusTile(data.t.humidity, "💧", data.humOn, data.hum, "humidity", data.t) : ""}
+            ${showCooling ? this._statusTile(data.t.cooling, "🌡️", data.coolOn, data.cool, "cooling", data.t) : ""}
+          </div>` : ""}
+          ${showRooms ? `<div class="rooms"><div class="rooms-label">${esc(data.t.rooms)}</div><div class="chips">${data.rooms.length ? data.rooms.map((room) => `<span class="chip">${esc(room)}</span>`).join("") : `<span class="chip muted">${esc(data.t.noNeed)}</span>`}</div></div>` : ""}
+        </div>` : ""}
+      </ha-card><style>${this._styles()}</style>`;
 
-        <div class="content">
-          <div class="status-grid">
-            ${this._statusTile(t.humidity, "💧", humOn, hum, "humidity", t)}
-            ${this._statusTile(t.cooling, "🌡️", coolOn, cool, "cooling", t)}
-          </div>
+    this._bindStatusClicks(data);
+  }
 
-          <div class="rooms">
-            <div class="rooms-label">${esc(t.rooms)}</div>
-            <div class="chips">
-              ${rooms.length
-                ? rooms.map((room) => `<span class="chip">${esc(room)}</span>`).join("")
-                : `<span class="chip muted">${esc(t.noNeed)}</span>`}
-            </div>
-          </div>
-        </div>
-      </ha-card>
-      <style>${this._styles()}</style>`;
-
-    this.shadowRoot.querySelector('[data-kind="humidity"]')?.addEventListener("click", () => this._moreInfo(hum?.entity_id));
-    this.shadowRoot.querySelector('[data-kind="cooling"]')?.addEventListener("click", () => this._moreInfo(cool?.entity_id));
+  _bindStatusClicks(data) {
+    this.shadowRoot.querySelector('[data-kind="humidity"]')?.addEventListener("click", () => this._moreInfo(data.hum?.entity_id));
+    this.shadowRoot.querySelector('[data-kind="cooling"]')?.addEventListener("click", () => this._moreInfo(data.cool?.entity_id));
   }
 
   _windowHtml() {
-    return `
-      <div class="window-frame">
-        <div class="pane left"><span class="handle"></span></div>
-        <div class="pane right"><span class="handle"></span></div>
-        <div class="breeze"><i></i><i></i><i></i></div>
-      </div>`;
+    return `<div class="window-frame"><div class="pane left"><span class="handle"></span></div><div class="pane right"><span class="handle"></span></div><div class="breeze"><i></i><i></i><i></i></div></div>`;
   }
 
   _mediumStatus(label, icon, active, entity, kind, t) {
-    return `
-      <button class="medium-status ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}>
-        <span class="medium-status-icon">${icon}</span>
-        <span><strong>${esc(label)}</strong><small>${active ? esc(t.ventilate) : esc(t.off)}</small></span>
-        <i></i>
-      </button>`;
+    return `<button class="medium-status ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><span class="medium-status-icon">${icon}</span><span><strong>${esc(label)}</strong><small>${active ? esc(t.ventilate) : esc(t.off)}</small></span><i></i></button>`;
   }
 
   _statusTile(label, icon, active, entity, kind, t) {
-    const reason = entity?.attributes?.recommendation || "";
-    return `
-      <button class="status ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}>
-        <div class="status-icon">${icon}</div>
-        <div class="status-copy">
-          <strong>${esc(label)}</strong>
-          <span>${active ? esc(t.ventilate) : esc(t.off)}</span>
-          ${reason ? `<small>${esc(reason)}</small>` : ""}
-        </div>
-        <div class="dot"></div>
-      </button>`;
+    const reason = pfBool(this._config, "show_reasons") ? (entity?.attributes?.recommendation || "") : "";
+    return `<button class="status ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><div class="status-icon">${icon}</div><div class="status-copy"><strong>${esc(label)}</strong><span>${active ? esc(t.ventilate) : esc(t.off)}</span>${reason ? `<small>${esc(reason)}</small>` : ""}</div><div class="dot"></div></button>`;
   }
 
   _styles() {
     return `
-      :host { display: block; height: 100%; }
-      ha-card.pf-card { overflow: hidden; border-radius: var(--ha-card-border-radius, 16px); height: 100%; box-sizing: border-box; }
-      .empty { padding: 24px; display: grid; gap: 8px; }
-      .empty span { color: var(--secondary-text-color); }
+      :host { display:block; height:100%; }
+      ha-card.pf-card { height:100%; box-sizing:border-box; overflow:hidden; border-radius:var(--ha-card-border-radius,16px); }
+      .empty { padding:20px; color:var(--secondary-text-color); }
 
-      /* Compact: one grid row, only the decision and essential outdoor values. */
-      .compact-card { color: #fff; }
-      .compact-card.cool { background: linear-gradient(110deg, #155e75, #0f766e 55%, #164e63); }
-      .compact-card.warm { background: linear-gradient(110deg, #b45309, #c2410c 55%, #9a3412); }
-      .compact-row { min-height: 56px; height: 100%; box-sizing: border-box; padding: 7px 12px; display: flex; align-items: center; gap: 12px; }
-      .compact-brand { min-width: 0; display: flex; align-items: center; gap: 6px; }
-      .compact-brand strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
-      .penguin { font-size: 17px; }
-      .compact-weather { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; opacity: .96; }
-      .compact-flags { display: flex; gap: 4px; }
-      .mini-flag { width: 23px; height: 23px; display: grid; place-items: center; border-radius: 7px; background: rgba(255,255,255,.12); opacity: .5; font-size: 13px; }
-      .mini-flag.active { background: rgba(255,255,255,.26); opacity: 1; box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
-      .compact-action { display: flex; align-items: center; gap: 6px; border-radius: 10px; padding: 6px 9px; background: rgba(255,255,255,.14); white-space: nowrap; }
-      .compact-action.active { background: rgba(255,255,255,.25); box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
-      .compact-action strong { font-size: 12px; }
-      .compact-card.half .compact-brand strong { max-width: 82px; }
-      .compact-card.half .compact-weather { font-size: 11px; }
-      .compact-card.half .compact-flags { display: none; }
-      .compact-card.half .compact-action strong { display: none; }
-      .compact-card.half .compact-action { padding-inline: 7px; }
+      /* Color modes */
+      .color-auto { color:#fff; --pf-accent:#fff; }
+      .color-auto.status-both { background:linear-gradient(135deg,#0f766e,#047857 55%,#065f46); }
+      .color-auto.status-cooling { background:linear-gradient(135deg,#0369a1,#075985 55%,#0c4a6e); }
+      .color-auto.status-humidity { background:linear-gradient(135deg,#15803d,#047857 55%,#065f46); }
+      .color-auto.status-warm { background:linear-gradient(135deg,#c2410c,#b45309 55%,#9a3412); }
+      .color-auto.status-neutral { background:linear-gradient(135deg,#475569,#334155 55%,#1e293b); }
+      .color-custom { color:var(--pf-fg); background:linear-gradient(135deg,color-mix(in srgb,var(--pf-bg) 86%,#000),var(--pf-bg) 55%,color-mix(in srgb,var(--pf-bg) 76%,#000)); }
+      .color-theme { color:var(--primary-text-color); background:var(--card-background-color); --pf-accent:var(--primary-color); }
+      .pf-card:not(.color-theme) .hero, .pf-card:not(.color-theme) .medium-hero { color:inherit; }
+      .color-theme .hero, .color-theme .medium-hero { background:color-mix(in srgb,var(--primary-color) 10%,var(--card-background-color)); }
+      .color-custom .hero, .color-custom .medium-hero { background:transparent; }
+      .color-auto .hero, .color-auto .medium-hero { background:transparent; }
 
-      /* Medium: small animated window plus the two decisions, no long reasons/room list. */
-      .medium-card { display: grid; grid-template-rows: minmax(0, 1fr) auto; color: #fff; }
-      .medium-card.cool { background: linear-gradient(135deg, #155e75, #0f766e 52%, #164e63); }
-      .medium-card.warm { background: linear-gradient(135deg, #b45309, #c2410c 52%, #9a3412); }
-      .medium-hero { min-height: 108px; padding: 12px 15px 7px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-      .medium-copy { min-width: 0; display: grid; gap: 3px; }
-      .medium-copy .brand { font-size: 16px; font-weight: 700; }
-      .medium-copy .advice { font-size: 12px; opacity: .94; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-      .medium-weather { display: flex; align-items: center; gap: 5px; font-size: 11px; margin-top: 3px; opacity: .92; }
-      .medium-window { width: 92px !important; height: 70px !important; flex: 0 0 auto; }
-      .medium-status-grid { background: var(--card-background-color); color: var(--primary-text-color); padding: 8px 10px 10px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-      .medium-status { appearance: none; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); border-radius: 10px; min-height: 46px; padding: 7px 9px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 7px; text-align: left; cursor: pointer; font: inherit; }
-      .medium-status-icon { font-size: 17px; }
-      .medium-status > span:nth-child(2) { min-width: 0; display: grid; }
-      .medium-status strong { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .medium-status small { font-size: 10px; color: var(--secondary-text-color); }
-      .medium-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--disabled-text-color); }
-      .medium-status.active { border-color: color-mix(in srgb, var(--success-color, #2e7d32) 55%, var(--divider-color)); }
-      .medium-status.active i { background: var(--success-color, #43a047); }
-      .medium-card.half .medium-hero { padding-inline: 11px; gap: 8px; }
-      .medium-card.half .medium-window { width: 72px !important; height: 57px !important; }
-      .medium-card.half .medium-copy .brand { font-size: 14px; }
-      .medium-card.half .medium-copy .advice { -webkit-line-clamp: 1; }
-      .medium-card.half .medium-status-grid { gap: 5px; padding-inline: 7px; }
-      .medium-card.half .medium-status { padding-inline: 6px; gap: 5px; }
-      .medium-card.half .medium-status small { display: none; }
+      /* Compact */
+      .compact-row { min-height:56px; height:100%; padding:7px 12px; box-sizing:border-box; display:flex; align-items:center; gap:10px; }
+      .compact-title { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+      .compact-weather { display:flex; gap:6px; align-items:center; white-space:nowrap; font-size:12px; }
+      .compact-title + .compact-weather { margin-left:4px; }
+      .compact-row > .compact-weather:first-child { margin-left:0; }
+      .compact-flags { display:flex; gap:4px; margin-left:auto; }
+      .mini-flag { width:23px; height:23px; display:grid; place-items:center; border-radius:7px; background:rgba(255,255,255,.12); opacity:.55; font-size:13px; }
+      .color-theme .mini-flag { background:var(--secondary-background-color); }
+      .mini-flag.active { opacity:1; background:rgba(255,255,255,.27); box-shadow:inset 0 0 0 1px rgba(255,255,255,.22); }
+      .color-theme .mini-flag.active { background:color-mix(in srgb,var(--primary-color) 18%,var(--card-background-color)); }
+      .compact-action { margin-left:auto; min-width:0; display:flex; gap:6px; align-items:center; padding:6px 9px; border-radius:10px; background:rgba(255,255,255,.16); }
+      .color-theme .compact-action { background:var(--secondary-background-color); }
+      .compact-action strong { font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .compact-action.active { background:rgba(255,255,255,.27); box-shadow:inset 0 0 0 1px rgba(255,255,255,.2); }
+      .compact-card.half .compact-title { max-width:70px; }
+      .compact-card.half .compact-flags { display:none; }
+      .compact-card.half .compact-action strong { max-width:130px; }
 
-      /* Large: full PenguFresh dashboard presentation. */
-      .hero { position: relative; padding: 20px; color: #fff; overflow: hidden; }
-      .hero.cool { background: linear-gradient(135deg, #155e75 0%, #0f766e 48%, #164e63 100%); }
-      .hero.warm { background: linear-gradient(135deg, #b45309 0%, #c2410c 52%, #9a3412 100%); }
-      .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 78% 16%, rgba(255,255,255,.2), transparent 36%); pointer-events: none; }
-      .topbar { position: relative; z-index: 2; display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
-      .brand { font-size: 20px; font-weight: 700; letter-spacing: .1px; }
-      .advice { font-size: 14px; margin-top: 5px; opacity: .94; max-width: 420px; }
-      .outside-pill { display: flex; gap: 9px; align-items: center; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.22); backdrop-filter: blur(10px); border-radius: 14px; padding: 9px 11px; white-space: nowrap; }
-      .outside-pill div { display: grid; font-size: 11px; line-height: 1.25; }
-      .outside-pill span { opacity: .9; }
-      .weather-icon { font-size: 22px; }
-      .scene { position: relative; z-index: 1; min-height: 172px; display: flex; align-items: center; justify-content: center; }
-      .outside-copy { position: absolute; left: 0; bottom: 10px; display: grid; gap: 4px; font-size: 12px; opacity: .9; }
+      /* Medium */
+      .medium-card { display:grid; grid-template-rows:minmax(0,1fr) auto; }
+      .medium-hero { min-height:108px; padding:12px 15px 7px; display:flex; box-sizing:border-box; align-items:center; justify-content:space-between; gap:14px; }
+      .medium-copy { min-width:0; display:grid; gap:4px; }
+      .medium-title { font-size:14px; font-weight:700; }
+      .advice { font-size:14px; font-weight:700; line-height:1.25; }
+      .medium-copy .advice { font-size:13px; }
+      .medium-weather { display:flex; gap:6px; align-items:center; font-size:11px; opacity:.94; }
+      .medium-window { width:92px !important; height:70px !important; flex:0 0 auto; }
+      .medium-status-grid { background:var(--card-background-color); color:var(--primary-text-color); padding:8px 10px 10px; display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:7px; }
+      .medium-status { appearance:none; border:1px solid var(--divider-color); background:var(--card-background-color); color:var(--primary-text-color); border-radius:10px; min-height:46px; padding:7px 9px; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:7px; text-align:left; cursor:pointer; font:inherit; }
+      .medium-status-icon { font-size:17px; }
+      .medium-status > span:nth-child(2) { min-width:0; display:grid; }
+      .medium-status strong { font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .medium-status small { font-size:10px; color:var(--secondary-text-color); }
+      .medium-status i { width:8px; height:8px; border-radius:50%; background:var(--disabled-text-color); }
+      .medium-status.active i { background:var(--success-color,#43a047); }
+      .medium-card.half .medium-hero { padding-inline:11px; gap:8px; }
+      .medium-card.half .medium-window { width:72px !important; height:57px !important; }
+      .medium-card.half .medium-copy .advice { font-size:12px; }
 
-      /* Window animation shared by medium and large layouts. */
-      .window-wrap { width: 156px; height: 120px; perspective: 700px; }
-      .window-frame { box-sizing: border-box; position: relative; width: 100%; height: 100%; border: 9px solid rgba(255,255,255,.96); border-radius: 8px; box-shadow: 0 14px 32px rgba(0,0,0,.24), inset 0 0 0 1px rgba(0,0,0,.08); background: rgba(206,242,255,.30); }
-      .medium-window .window-frame { border-width: 6px; border-radius: 6px; box-shadow: 0 8px 18px rgba(0,0,0,.2); }
-      .window-frame::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 5px; transform: translateX(-50%); background: rgba(255,255,255,.96); z-index: 4; }
-      .medium-window .window-frame::before { width: 3px; }
-      .pane { position: absolute; top: 0; bottom: 0; width: calc(50% - 2px); box-sizing: border-box; border: 3px solid rgba(255,255,255,.9); background: linear-gradient(145deg, rgba(224,247,255,.62), rgba(147,210,230,.30)); transition: transform .65s cubic-bezier(.2,.8,.2,1), box-shadow .65s ease; z-index: 3; }
-      .medium-window .pane { border-width: 2px; }
-      .pane.left { left: 0; transform-origin: left center; }
-      .pane.right { right: 0; transform-origin: right center; }
-      .window-wrap.open .pane.left { transform: rotateY(-58deg); box-shadow: 8px 5px 15px rgba(0,0,0,.18); }
-      .window-wrap.open .pane.right { transform: rotateY(58deg); box-shadow: -8px 5px 15px rgba(0,0,0,.18); }
-      .handle { position: absolute; top: 48%; width: 3px; height: 18px; border-radius: 3px; background: rgba(255,255,255,.95); }
-      .medium-window .handle { width: 2px; height: 10px; }
-      .left .handle { right: 7px; } .right .handle { left: 7px; }
-      .medium-window .left .handle { right: 4px; } .medium-window .right .handle { left: 4px; }
-      .breeze { position: absolute; inset: 18px 12px; z-index: 2; opacity: 0; transition: opacity .3s ease; overflow: hidden; }
-      .medium-window .breeze { inset: 8px 6px; }
-      .window-wrap.open .breeze { opacity: 1; }
-      .breeze i { position: absolute; left: -55px; width: 70px; height: 15px; border-top: 2px solid rgba(255,255,255,.75); border-radius: 50%; animation: pf-breeze 2.3s linear infinite; }
-      .medium-window .breeze i { width: 38px; height: 8px; }
-      .breeze i:nth-child(1) { top: 17px; animation-delay: 0s; }
-      .breeze i:nth-child(2) { top: 45px; animation-delay: .7s; width: 52px; }
-      .breeze i:nth-child(3) { top: 73px; animation-delay: 1.3s; width: 62px; }
-      .medium-window .breeze i:nth-child(1) { top: 7px; }
-      .medium-window .breeze i:nth-child(2) { top: 22px; width: 30px; }
-      .medium-window .breeze i:nth-child(3) { top: 37px; width: 34px; }
-      @keyframes pf-breeze { from { transform: translateX(0); opacity: 0; } 25% { opacity: 1; } to { transform: translateX(190px); opacity: 0; } }
-      @media (prefers-reduced-motion: reduce) { .pane, .breeze i { transition: none !important; animation: none !important; } }
+      /* Large */
+      .hero { position:relative; padding:20px; overflow:hidden; }
+      .hero::after { content:""; position:absolute; inset:0; background:radial-gradient(circle at 78% 16%,rgba(255,255,255,.16),transparent 36%); pointer-events:none; }
+      .color-theme .hero::after { opacity:.25; }
+      .topbar { position:relative; z-index:2; display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+      .headline { min-width:0; display:grid; gap:5px; }
+      .title { font-size:15px; font-weight:700; }
+      .outside-pill { display:flex; gap:9px; align-items:center; border-radius:14px; padding:9px 11px; white-space:nowrap; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); }
+      .color-theme .outside-pill { background:var(--card-background-color); border-color:var(--divider-color); }
+      .outside-pill div { display:grid; font-size:11px; line-height:1.25; }
+      .outside-pill span { opacity:.92; }
+      .weather-icon { font-size:22px; }
+      .scene { position:relative; z-index:1; min-height:172px; display:flex; align-items:center; justify-content:center; }
+      .outside-copy { position:absolute; left:0; top:50%; transform:translateY(-50%); max-width:145px; display:grid; gap:6px; font-size:11px; opacity:.92; }
 
-      .content { padding: 14px 16px 16px; display: grid; gap: 14px; }
-      .status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-      .status { appearance: none; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); border-radius: 13px; padding: 12px; display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: 10px; text-align: left; cursor: pointer; font: inherit; }
-      .status:hover, .medium-status:hover { background: color-mix(in srgb, var(--card-background-color) 92%, var(--primary-color)); }
-      .status:disabled, .medium-status:disabled { cursor: default; opacity: .5; }
-      .status.active { border-color: color-mix(in srgb, var(--success-color, #2e7d32) 55%, var(--divider-color)); }
-      .status-icon { font-size: 21px; }
-      .status-copy { min-width: 0; display: grid; gap: 2px; }
-      .status-copy strong { font-size: 13px; }
-      .status-copy span { font-size: 12px; color: var(--secondary-text-color); }
-      .status-copy small { margin-top: 4px; font-size: 10px; line-height: 1.25; color: var(--secondary-text-color); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; background: var(--disabled-text-color); }
-      .active .dot { background: var(--success-color, #43a047); box-shadow: 0 0 0 4px color-mix(in srgb, var(--success-color, #43a047) 18%, transparent); }
-      .rooms { display: grid; gap: 7px; }
-      .rooms-label { font-size: 11px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .05em; }
-      .chips { display: flex; gap: 6px; flex-wrap: wrap; }
-      .chip { font-size: 11px; padding: 5px 9px; border-radius: 999px; background: color-mix(in srgb, var(--primary-color) 12%, var(--card-background-color)); color: var(--primary-text-color); }
-      .chip.muted { background: var(--secondary-background-color); color: var(--secondary-text-color); }
+      /* Window */
+      .window-wrap { width:180px; height:138px; perspective:700px; }
+      .window-frame { position:relative; width:100%; height:100%; border:7px solid rgba(255,255,255,.92); border-radius:5px; box-sizing:border-box; box-shadow:0 12px 28px rgba(0,0,0,.18); background:linear-gradient(#bae6fd,#e0f2fe 58%,#bbf7d0 59%,#86efac); overflow:visible; }
+      .color-theme .window-frame { border-color:color-mix(in srgb,var(--primary-text-color) 70%,transparent); }
+      .pane { position:absolute; top:0; bottom:0; width:50%; background:rgba(186,230,253,.28); border:2px solid rgba(255,255,255,.85); box-sizing:border-box; transition:transform .55s cubic-bezier(.2,.8,.2,1); transform-style:preserve-3d; }
+      .left { left:0; transform-origin:left center; } .right { right:0; transform-origin:right center; }
+      .window-wrap.open .pane.left { transform:rotateY(-58deg); box-shadow:8px 5px 15px rgba(0,0,0,.18); }
+      .window-wrap.open .pane.right { transform:rotateY(58deg); box-shadow:-8px 5px 15px rgba(0,0,0,.18); }
+      .handle { position:absolute; top:48%; width:3px; height:18px; border-radius:3px; background:rgba(255,255,255,.95); }
+      .left .handle { right:7px; } .right .handle { left:7px; }
+      .medium-window .handle { width:2px; height:10px; }
+      .medium-window .left .handle { right:4px; } .medium-window .right .handle { left:4px; }
+      .breeze { position:absolute; inset:18px 12px; z-index:2; opacity:0; transition:opacity .3s ease; overflow:hidden; }
+      .medium-window .breeze { inset:8px 6px; }
+      .window-wrap.open .breeze { opacity:1; }
+      .breeze i { position:absolute; left:-55px; width:70px; height:15px; border-top:2px solid rgba(255,255,255,.78); border-radius:50%; animation:pf-breeze 2.3s linear infinite; }
+      .breeze i:nth-child(1) { top:17px; }
+      .breeze i:nth-child(2) { top:45px; animation-delay:.7s; width:52px; }
+      .breeze i:nth-child(3) { top:73px; animation-delay:1.3s; width:62px; }
+      .medium-window .breeze i { width:38px; height:8px; }
+      .medium-window .breeze i:nth-child(1) { top:7px; }
+      .medium-window .breeze i:nth-child(2) { top:22px; width:30px; }
+      .medium-window .breeze i:nth-child(3) { top:37px; width:34px; }
+      @keyframes pf-breeze { from { transform:translateX(0); opacity:0; } 25% { opacity:1; } to { transform:translateX(190px); opacity:0; } }
+      @media (prefers-reduced-motion:reduce) { .pane,.breeze i { transition:none !important; animation:none !important; } }
 
-      .large-card.half .hero { padding: 16px; }
-      .large-card.half .topbar { gap: 8px; }
-      .large-card.half .brand { font-size: 17px; }
-      .large-card.half .outside-pill { padding: 7px 8px; }
-      .large-card.half .scene { min-height: 154px; }
-      .large-card.half .window-wrap { width: 132px; height: 102px; }
-      .large-card.half .outside-copy { max-width: 110px; font-size: 11px; }
-      .large-card.half .content { gap: 10px; padding: 10px 12px 12px; }
-      .large-card.half .status { padding: 9px; gap: 7px; }
-      .large-card.half .status-copy small { -webkit-line-clamp: 1; }
+      /* Content */
+      .content { background:var(--card-background-color); color:var(--primary-text-color); padding:14px 16px 16px; display:grid; gap:14px; }
+      .status-grid { display:grid; gap:10px; }
+      .status-grid.two { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .status-grid.one { grid-template-columns:1fr; }
+      .status { appearance:none; border:1px solid var(--divider-color); background:var(--card-background-color); color:var(--primary-text-color); border-radius:13px; padding:12px; display:grid; grid-template-columns:auto 1fr auto; align-items:start; gap:10px; text-align:left; cursor:pointer; font:inherit; }
+      .status:hover,.medium-status:hover { background:color-mix(in srgb,var(--card-background-color) 92%,var(--primary-color)); }
+      .status:disabled,.medium-status:disabled { cursor:default; opacity:.5; }
+      .status.active { border-color:color-mix(in srgb,var(--success-color,#2e7d32) 55%,var(--divider-color)); }
+      .status-icon { font-size:21px; }
+      .status-copy { min-width:0; display:grid; gap:2px; }
+      .status-copy strong { font-size:13px; }
+      .status-copy span { font-size:12px; color:var(--secondary-text-color); }
+      .status-copy small { margin-top:4px; font-size:10px; line-height:1.25; color:var(--secondary-text-color); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .dot { width:9px; height:9px; border-radius:50%; margin-top:4px; background:var(--disabled-text-color); }
+      .active .dot { background:var(--success-color,#43a047); box-shadow:0 0 0 4px color-mix(in srgb,var(--success-color,#43a047) 18%,transparent); }
+      .rooms { display:grid; gap:7px; }
+      .rooms-label { font-size:11px; color:var(--secondary-text-color); text-transform:uppercase; letter-spacing:.05em; }
+      .chips { display:flex; gap:6px; flex-wrap:wrap; }
+      .chip { font-size:11px; padding:5px 9px; border-radius:999px; background:color-mix(in srgb,var(--primary-color) 12%,var(--card-background-color)); color:var(--primary-text-color); }
+      .chip.muted { background:var(--secondary-background-color); color:var(--secondary-text-color); }
 
-      @media (max-width: 430px) {
-        .compact-row { gap: 7px; padding-inline: 9px; }
-        .compact-brand strong { max-width: 80px; }
-        .compact-flags { display: none; }
-        .compact-action strong { display: none; }
-        .compact-weather { font-size: 10px; }
-        .hero { padding: 16px; }
-        .topbar { flex-direction: column; }
-        .outside-pill { align-self: flex-end; }
-        .scene { min-height: 150px; }
-        .outside-copy { max-width: 105px; }
-        .status-grid { grid-template-columns: 1fr; }
+      .large-card.half .hero { padding:16px; }
+      .large-card.half .scene { min-height:154px; }
+      .large-card.half .window-wrap { width:132px; height:102px; }
+      .large-card.half .outside-copy { max-width:105px; }
+      .large-card.half .content { padding:10px 12px 12px; gap:10px; }
+
+      @media (max-width:430px) {
+        .compact-row { gap:7px; padding-inline:9px; }
+        .compact-title { max-width:70px; }
+        .compact-flags { display:none; }
+        .compact-action strong { max-width:120px; }
+        .hero { padding:16px; }
+        .topbar { gap:8px; }
+        .outside-pill { padding:7px 8px; }
+        .scene { min-height:150px; }
+        .outside-copy { max-width:105px; }
+        .status-grid.two { grid-template-columns:1fr; }
       }
     `;
   }
@@ -634,16 +661,33 @@ class PenguFreshCardEditor extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = {};
     this._hass = null;
+    this._renderSignature = null;
+    this._hasRendered = false;
+  }
+
+  _structureSignature(hass = this._hass) {
+    if (!hass) return "";
+    const language = pfLanguage(hass);
+    const instances = findPenguFreshInstances(hass)
+      .map((item) => [item.id, item.name, item.humidity || "", item.cooling || ""].join("|"))
+      .sort().join(";");
+    return `${language}::${instances}`;
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    const signature = this._structureSignature(hass);
+    if (!this._hasRendered || signature !== this._renderSignature) {
+      this._renderSignature = signature;
+      this._render();
+    }
   }
 
   setConfig(config) {
-    this._config = { type: "custom:pengufresh-card", ...config };
-    this._render();
+    const nextConfig = { type: "custom:pengufresh-card", ...config };
+    const changed = JSON.stringify(nextConfig) !== JSON.stringify(this._config);
+    this._config = nextConfig;
+    if (changed || !this._hasRendered) this._render();
   }
 
   _fireConfigChanged(config) {
@@ -654,89 +698,116 @@ class PenguFreshCardEditor extends HTMLElement {
     this.dispatchEvent(event);
   }
 
+  _toggle(key, label) {
+    return `<label class="toggle"><input type="checkbox" data-setting="${key}" ${pfBool(this._config, key) ? "checked" : ""}><span>${esc(label)}</span></label>`;
+  }
+
   _render() {
     if (!this.shadowRoot || !this._hass) return;
     const t = PF_I18N[pfLanguage(this._hass)];
     const instances = findPenguFreshInstances(this._hass);
     const currentEntry =
       this._hass.states[this._config.humidity_entity]?.attributes?.pengufresh_entry_id ||
-      this._hass.states[this._config.cooling_entity]?.attributes?.pengufresh_entry_id ||
-      "";
+      this._hass.states[this._config.cooling_entity]?.attributes?.pengufresh_entry_id || "";
     const currentLayout = pfLayoutKey(this._config);
+    const colorMode = pfValue(this._config, "color_mode");
 
     this.shadowRoot.innerHTML = `
       <div class="editor">
-        <label>
-          <span>${esc(t.editorTitle)}</span>
-          <select id="instance" ${instances.length ? "" : "disabled"}>
-            ${instances.length
-              ? instances.map((item) => `<option value="${esc(item.id)}" ${item.id === currentEntry ? "selected" : ""}>${esc(item.name)}</option>`).join("")
-              : `<option>${esc(t.noInstance)}</option>`}
-          </select>
-        </label>
-        <label>
-          <span>${esc(t.layout)}</span>
-          <select id="layout">
-            ${pfLayoutOptions(t).map(([value, label]) => `<option value="${value}" ${value === currentLayout ? "selected" : ""}>${esc(label)}</option>`).join("")}
-          </select>
-        </label>
-        <label>
-          <span>${esc(t.customTitle)}</span>
-          <input id="title" type="text" value="${esc(this._config.title || "")}" placeholder="PenguFresh" />
-        </label>
+        <label class="field"><span>${esc(t.editorTitle)}</span><select id="instance" ${instances.length ? "" : "disabled"}>${instances.length ? instances.map((item) => `<option value="${esc(item.id)}" ${item.id === currentEntry ? "selected" : ""}>${esc(pfCleanInstanceName(item.name) || item.name)}</option>`).join("") : `<option>${esc(t.noInstance)}</option>`}</select></label>
+        <label class="field"><span>${esc(t.layout)}</span><select id="layout">${pfLayoutOptions(t).map(([value,label]) => `<option value="${value}" ${value === currentLayout ? "selected" : ""}>${esc(label)}</option>`).join("")}</select></label>
         <div class="hint">${esc(t.layoutHint)}</div>
+
+        <section><h3>${esc(t.content)}</h3><div class="toggles">
+          ${this._toggle("show_title", t.showTitle)}
+          ${this._toggle("show_advice", t.showAdvice)}
+          ${this._toggle("show_outdoor", t.showOutdoor)}
+          ${this._toggle("show_dew_point", t.showDewPoint)}
+          ${this._toggle("show_window", t.showWindow)}
+          ${this._toggle("show_humidity", t.showHumidity)}
+          ${this._toggle("show_cooling", t.showCooling)}
+          ${this._toggle("show_rooms", t.showRooms)}
+          ${this._toggle("show_reasons", t.showReasons)}
+        </div></section>
+
+        <label class="field"><span>${esc(t.customTitle)}</span><input id="title" type="text" value="${esc(this._config.title || "")}" placeholder="${esc(pfCleanInstanceName(instances.find((x) => x.id === currentEntry)?.name || "Wohnung"))}"></label>
+
+        <section><h3>${esc(t.colors)}</h3>
+          <label class="field"><span>${esc(t.colorMode)}</span><select id="color-mode">
+            <option value="auto" ${colorMode === "auto" ? "selected" : ""}>${esc(t.colorAuto)}</option>
+            <option value="theme" ${colorMode === "theme" ? "selected" : ""}>${esc(t.colorTheme)}</option>
+            <option value="custom" ${colorMode === "custom" ? "selected" : ""}>${esc(t.colorCustom)}</option>
+          </select></label>
+          ${colorMode === "auto" ? `<div class="hint">${esc(t.autoColorHint)}</div>` : ""}
+          ${colorMode === "custom" ? `<div class="color-grid">
+            ${this._colorField("background_color", t.backgroundColor, pfValue(this._config,"background_color"))}
+            ${this._colorField("text_color", t.textColor, pfValue(this._config,"text_color"))}
+            ${this._colorField("accent_color", t.accentColor, pfValue(this._config,"accent_color"))}
+          </div>` : ""}
+        </section>
       </div>
       <style>
-        .editor { display: grid; gap: 16px; padding: 8px 0; }
-        label { display: grid; gap: 6px; color: var(--primary-text-color); }
-        label > span { font-size: 12px; color: var(--secondary-text-color); }
-        select, input { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--card-background-color); color: var(--primary-text-color); font: inherit; }
-        .hint { font-size: 12px; color: var(--secondary-text-color); line-height: 1.4; }
+        .editor { display:grid; gap:16px; padding:8px 0; color:var(--primary-text-color); }
+        .field { display:grid; gap:6px; }
+        .field > span { font-size:12px; color:var(--secondary-text-color); }
+        select,input[type="text"] { box-sizing:border-box; width:100%; min-height:44px; padding:0 12px; border:1px solid var(--divider-color); border-radius:8px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; }
+        section { display:grid; gap:10px; padding-top:2px; }
+        h3 { margin:0; font-size:13px; }
+        .toggles { display:grid; gap:4px; border:1px solid var(--divider-color); border-radius:10px; padding:5px 10px; }
+        .toggle { min-height:34px; display:flex; align-items:center; gap:9px; font-size:13px; cursor:pointer; }
+        .toggle input { width:17px; height:17px; accent-color:var(--primary-color); }
+        .hint { font-size:12px; color:var(--secondary-text-color); line-height:1.4; }
+        .color-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+        .color-field { display:grid; gap:5px; font-size:11px; color:var(--secondary-text-color); }
+        input[type="color"] { width:100%; height:40px; padding:3px; border:1px solid var(--divider-color); border-radius:8px; background:var(--card-background-color); cursor:pointer; }
       </style>`;
 
-    const instanceSelect = this.shadowRoot.querySelector("#instance");
-    const layoutSelect = this.shadowRoot.querySelector("#layout");
-    const title = this.shadowRoot.querySelector("#title");
+    this._hasRendered = true;
+    this._renderSignature = this._structureSignature();
 
     if (instances.length && !currentEntry) {
       const first = instances[0];
-      queueMicrotask(() => this._fireConfigChanged({
-        ...this._config,
-        humidity_entity: first.humidity,
-        cooling_entity: first.cooling,
-      }));
+      queueMicrotask(() => this._fireConfigChanged({ ...this._config, humidity_entity:first.humidity, cooling_entity:first.cooling }));
     }
 
-    instanceSelect?.addEventListener("change", (event) => {
+    this.shadowRoot.querySelector("#instance")?.addEventListener("change", (event) => {
       const item = instances.find((instance) => instance.id === event.target.value);
       if (!item) return;
-      this._fireConfigChanged({
-        ...this._config,
-        humidity_entity: item.humidity,
-        cooling_entity: item.cooling,
-      });
+      this._fireConfigChanged({ ...this._config, humidity_entity:item.humidity, cooling_entity:item.cooling });
     });
 
-    layoutSelect?.addEventListener("change", (event) => {
+    this.shadowRoot.querySelector("#layout")?.addEventListener("change", (event) => {
       const layout = event.target.value;
       const preset = PF_LAYOUTS[layout] || PF_LAYOUTS[PF_DEFAULT_LAYOUT];
-      this._fireConfigChanged({
-        ...this._config,
-        layout,
-        grid_options: {
-          columns: preset.columns,
-          rows: preset.rows,
-        },
+      this._fireConfigChanged({ ...this._config, layout, grid_options:{ columns:preset.columns, rows:preset.rows } });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-setting]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        this._fireConfigChanged({ ...this._config, [event.target.dataset.setting]:event.target.checked });
       });
     });
 
-    title?.addEventListener("change", (event) => {
+    this.shadowRoot.querySelector("#title")?.addEventListener("change", (event) => {
       const value = event.target.value.trim();
       const next = { ...this._config };
-      if (value) next.title = value;
-      else delete next.title;
+      if (value) next.title = value; else delete next.title;
       this._fireConfigChanged(next);
     });
+
+    this.shadowRoot.querySelector("#color-mode")?.addEventListener("change", (event) => {
+      this._fireConfigChanged({ ...this._config, color_mode:event.target.value });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-color]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        this._fireConfigChanged({ ...this._config, [event.target.dataset.color]:event.target.value });
+      });
+    });
+  }
+
+  _colorField(key, label, value) {
+    return `<label class="color-field"><span>${esc(label)}</span><input type="color" data-color="${key}" value="${esc(pfSafeColor(value,PF_DEFAULTS[key]))}"></label>`;
   }
 }
 
@@ -748,21 +819,13 @@ if (!window.customCards.some((card) => card.type === "pengufresh-card")) {
   window.customCards.push({
     type: "pengufresh-card",
     name: "PenguFresh",
-    description: "Ventilation recommendation with adaptive layouts, animated window and indoor/outdoor climate status.",
+    description: "Configurable ventilation recommendation card with adaptive layouts and animated window.",
     preview: true,
     getEntitySuggestion: (hass, entityId) => {
       const pair = pairForEntity(hass, entityId);
       if (!pair) return null;
       const preset = PF_LAYOUTS[PF_DEFAULT_LAYOUT];
-      return {
-        config: {
-          type: "custom:pengufresh-card",
-          humidity_entity: pair.humidity,
-          cooling_entity: pair.cooling,
-          layout: PF_DEFAULT_LAYOUT,
-          grid_options: { columns: preset.columns, rows: preset.rows },
-        },
-      };
+      return { config:{ type:"custom:pengufresh-card", humidity_entity:pair.humidity, cooling_entity:pair.cooling, layout:PF_DEFAULT_LAYOUT, grid_options:{ columns:preset.columns, rows:preset.rows } } };
     },
   });
 }

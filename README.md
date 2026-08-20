@@ -43,6 +43,12 @@ The card editor also provides six layout presets for Sections dashboards:
 
 Smaller layouts intentionally show fewer details. Manual card resizing is still possible; PenguFresh adapts its information density to the selected grid size.
 
+The visual card editor also lets you choose which elements are shown (title, recommendation, outdoor values, dew point, animated window, humidity/cooling status, recommended rooms and detailed reasons). The PenguFresh branding is hidden in the dashboard card by default; an optional room/instance title can be enabled.
+
+Three color modes are available: **automatic status colors**, **Home Assistant theme**, or **custom colors** using color pickers for background, text and accent. Automatic mode changes the card color depending on the current recommendation, for example cooling, dehumidifying, both, or keeping the windows closed because outdoor air is too warm.
+
+The card editor does not refresh its controls on normal Home Assistant state updates, so open dropdowns remain stable while sensor values update in the background.
+
 ### If the card was installed before 0.2.2
 
 After updating, restart Home Assistant and perform a full browser reload. The card configuration must contain `type: custom:pengufresh-card`; PenguFresh adds this automatically from 0.2.2 onward.
