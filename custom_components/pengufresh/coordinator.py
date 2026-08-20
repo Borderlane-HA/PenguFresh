@@ -48,7 +48,7 @@ def merged_config(entry: ConfigEntry) -> dict[str, Any]:
 
 
 class PenguFreshCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Calculate ventilation recommendations at a fixed interval."""
+    """Calculate one clear ventilation recommendation per room."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
@@ -61,8 +61,9 @@ class PenguFreshCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             name=f"{DOMAIN}_{entry.entry_id}",
             update_interval=timedelta(minutes=interval),
         )
+        self._room_active: dict[str, bool] = {}
         self._humidity_active: dict[str, bool] = {}
-        self._temperature_active: dict[str, bool] = {}
+        self._cooling_active: dict[str, bool] = {}
 
     def _state_float(self, entity_id: str) -> tuple[float, str | None]:
         state = self.hass.states.get(entity_id)
@@ -91,27 +92,16 @@ class PenguFreshCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         out_ah = absolute_humidity_gm3(out_temp_c, out_rh)
         out_dew_c = dew_point_c(out_temp_c, out_rh)
 
-        max_rh = float(config.get(CONF_MAX_RELATIVE_HUMIDITY, profile[CONF_MAX_RELATIVE_HUMIDITY]))
-        min_ah_delta = float(
-            config.get(CONF_MIN_ABSOLUTE_HUMIDITY_DELTA, profile[CONF_MIN_ABSOLUTE_HUMIDITY_DELTA])
-        )
+        target_rh = float(config.get(CONF_MAX_RELATIVE_HUMIDITY, profile[CONF_MAX_RELATIVE_HUMIDITY]))
+        min_ah_delta = float(config.get(CONF_MIN_ABSOLUTE_HUMIDITY_DELTA, profile[CONF_MIN_ABSOLUTE_HUMIDITY_DELTA]))
         rh_hysteresis = float(config.get(CONF_HUMIDITY_HYSTERESIS, profile[CONF_HUMIDITY_HYSTERESIS]))
-        ah_hysteresis = float(
-            config.get(CONF_ABSOLUTE_HUMIDITY_HYSTERESIS, profile[CONF_ABSOLUTE_HUMIDITY_HYSTERESIS])
-        )
+        ah_hysteresis = float(config.get(CONF_ABSOLUTE_HUMIDITY_HYSTERESIS, profile[CONF_ABSOLUTE_HUMIDITY_HYSTERESIS]))
         target_temp_c = float(config.get(CONF_TARGET_TEMPERATURE_C, profile[CONF_TARGET_TEMPERATURE_C]))
-        min_temp_delta_c = float(
-            config.get(CONF_MIN_TEMPERATURE_DELTA_C, profile[CONF_MIN_TEMPERATURE_DELTA_C])
-        )
-        temp_hysteresis_c = float(
-            config.get(CONF_TEMPERATURE_HYSTERESIS_C, profile[CONF_TEMPERATURE_HYSTERESIS_C])
-        )
-        moisture_guard = bool(
-            config.get(CONF_TEMPERATURE_MOISTURE_GUARD, profile[CONF_TEMPERATURE_MOISTURE_GUARD])
-        )
+        min_temp_delta_c = float(config.get(CONF_MIN_TEMPERATURE_DELTA_C, profile[CONF_MIN_TEMPERATURE_DELTA_C]))
+        temp_hysteresis_c = float(config.get(CONF_TEMPERATURE_HYSTERESIS_C, profile[CONF_TEMPERATURE_HYSTERESIS_C]))
+        moisture_guard = bool(config.get(CONF_TEMPERATURE_MOISTURE_GUARD, profile[CONF_TEMPERATURE_MOISTURE_GUARD]))
 
-        humidity_rooms: list[dict[str, Any]] = []
-        temperature_rooms: list[dict[str, Any]] = []
+        rooms: list[dict[str, Any]] = []
         unavailable_rooms: list[str] = []
 
         for room in config.get(CONF_ROOMS, []):
@@ -123,14 +113,29 @@ class PenguFreshCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 rh, _ = self._state_float(room[CONF_ROOM_HUMIDITY])
             except ValueError:
                 unavailable_rooms.append(room_name)
+                self._room_active[room_id] = False
                 self._humidity_active[room_id] = False
-                self._temperature_active[room_id] = False
+                self._cooling_active[room_id] = False
+                rooms.append({
+                    "id": room_id,
+                    "name": room_name,
+                    "available": False,
+                    "recommend": False,
+                    "reason_code": "sensor_unavailable",
+                    "reasons": [],
+                })
                 continue
 
             if not 0.0 <= rh <= 100.0:
                 unavailable_rooms.append(room_name)
-                self._humidity_active[room_id] = False
-                self._temperature_active[room_id] = False
+                rooms.append({
+                    "id": room_id,
+                    "name": room_name,
+                    "available": False,
+                    "recommend": False,
+                    "reason_code": "sensor_unavailable",
+                    "reasons": [],
+                })
                 continue
 
             indoor_ah = absolute_humidity_gm3(temp_c, rh)
@@ -138,83 +143,87 @@ class PenguFreshCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ah_advantage = indoor_ah - out_ah
             temp_advantage = temp_c - out_temp_c
 
-            was_humidity_active = self._humidity_active.get(room_id, False)
-            if was_humidity_active:
-                humidity_active = (
-                    rh >= max(0.0, max_rh - rh_hysteresis)
-                    and ah_advantage >= max(0.0, min_ah_delta - ah_hysteresis)
-                )
+            # Humidity is a *reason* for the final recommendation. Relative
+            # humidity tells us whether the room needs drying; absolute humidity
+            # verifies that outdoor air can actually remove water.
+            was_humidity = self._humidity_active.get(room_id, False)
+            if was_humidity:
+                humidity_need = rh > max(0.0, target_rh - rh_hysteresis)
+                humidity_advantage_ok = ah_advantage >= max(0.0, min_ah_delta - ah_hysteresis)
             else:
-                humidity_active = rh >= max_rh and ah_advantage >= min_ah_delta
-            self._humidity_active[room_id] = humidity_active
+                humidity_need = rh > target_rh
+                humidity_advantage_ok = ah_advantage >= min_ah_delta
+            humidity_recommend = humidity_need and humidity_advantage_ok
+            self._humidity_active[room_id] = humidity_recommend
 
-            if humidity_active:
-                humidity_reason = "outside_air_drier"
-            elif rh < max_rh:
-                humidity_reason = "humidity_below_threshold"
-            elif ah_advantage < min_ah_delta:
-                humidity_reason = "outside_not_dry_enough"
+            # Cooling is the second possible reason. For basement-style profiles
+            # a moisture guard can veto cooling if outside air would add water.
+            was_cooling = self._cooling_active.get(room_id, False)
+            guard_margin = 0.15 if was_cooling else 0.0
+            moisture_guard_ok = (not moisture_guard) or (out_ah <= indoor_ah + guard_margin)
+            if was_cooling:
+                cooling_need = temp_c >= target_temp_c - temp_hysteresis_c
+                cooling_advantage_ok = temp_advantage >= max(0.1, min_temp_delta_c - temp_hysteresis_c)
             else:
-                humidity_reason = "no_humidity_benefit"
+                cooling_need = temp_c >= target_temp_c
+                cooling_advantage_ok = temp_advantage >= min_temp_delta_c
+            cooling_recommend = cooling_need and cooling_advantage_ok and moisture_guard_ok
+            self._cooling_active[room_id] = cooling_recommend
 
-            # The basement profile deliberately defaults to a moisture guard for cooling.
-            # Without a wall/surface temperature sensor, absolute humidity is the safest
-            # generally available proxy for avoiding humid summer air in a cool cellar.
-            guard_margin = 0.15 if self._temperature_active.get(room_id, False) else 0.0
-            guard_ok = (not moisture_guard) or (out_ah <= indoor_ah + guard_margin)
+            recommend = humidity_recommend or cooling_recommend
+            reasons: list[str] = []
+            if cooling_recommend:
+                reasons.append("cooling")
+            if humidity_recommend:
+                reasons.append("dehumidifying")
 
-            was_temp_active = self._temperature_active.get(room_id, False)
-            if was_temp_active:
-                temperature_active = (
-                    temp_c >= target_temp_c - temp_hysteresis_c
-                    and temp_advantage >= max(0.1, min_temp_delta_c - temp_hysteresis_c)
-                    and guard_ok
-                )
+            if recommend:
+                reason_code = "cooling_and_dehumidifying" if len(reasons) == 2 else reasons[0]
+            elif cooling_need and cooling_advantage_ok and not moisture_guard_ok:
+                reason_code = "blocked_by_moisture_guard"
+            elif humidity_need and not humidity_advantage_ok:
+                reason_code = "outside_not_dry_enough"
+            elif cooling_need and not cooling_advantage_ok:
+                reason_code = "outside_not_cool_enough"
+            elif not cooling_need and not humidity_need:
+                reason_code = "targets_reached"
+            elif humidity_need:
+                reason_code = "no_humidity_benefit"
             else:
-                temperature_active = (
-                    temp_c >= target_temp_c
-                    and temp_advantage >= min_temp_delta_c
-                    and guard_ok
-                )
-            self._temperature_active[room_id] = temperature_active
+                reason_code = "no_ventilation_benefit"
 
-            if temperature_active:
-                temperature_reason = "outside_air_cooler"
-            elif not guard_ok:
-                temperature_reason = "blocked_by_moisture_guard"
-            elif temp_c < target_temp_c:
-                temperature_reason = "temperature_below_target"
-            elif temp_advantage < min_temp_delta_c:
-                temperature_reason = "outside_not_cool_enough"
-            else:
-                temperature_reason = "no_temperature_benefit"
-
-            humidity_rooms.append(
+            self._room_active[room_id] = recommend
+            rooms.append(
                 {
                     "id": room_id,
                     "name": room_name,
-                    "recommend": humidity_active,
-                    "reason_code": humidity_reason,
+                    "available": True,
+                    "recommend": recommend,
+                    "reason_code": reason_code,
+                    "reasons": reasons,
                     "temperature_c": temp_c,
                     "relative_humidity": rh,
                     "absolute_humidity": indoor_ah,
                     "dew_point_c": indoor_dew_c,
-                    "absolute_humidity_advantage": ah_advantage,
-                }
-            )
-            temperature_rooms.append(
-                {
-                    "id": room_id,
-                    "name": room_name,
-                    "recommend": temperature_active,
-                    "reason_code": temperature_reason,
-                    "temperature_c": temp_c,
-                    "relative_humidity": rh,
-                    "absolute_humidity": indoor_ah,
                     "temperature_advantage_c": temp_advantage,
-                    "moisture_guard_ok": guard_ok,
+                    "absolute_humidity_advantage": ah_advantage,
+                    "cooling_need": cooling_need,
+                    "cooling_advantage_ok": cooling_advantage_ok,
+                    "cooling_recommend": cooling_recommend,
+                    "humidity_need": humidity_need,
+                    "humidity_advantage_ok": humidity_advantage_ok,
+                    "humidity_recommend": humidity_recommend,
+                    "moisture_guard_ok": moisture_guard_ok,
                 }
             )
+
+        available_rooms = [room for room in rooms if room.get("available")]
+        recommended_rooms = [room for room in available_rooms if room["recommend"]]
+        overall_reasons: list[str] = []
+        if any("cooling" in room.get("reasons", []) for room in recommended_rooms):
+            overall_reasons.append("cooling")
+        if any("dehumidifying" in room.get("reasons", []) for room in recommended_rooms):
+            overall_reasons.append("dehumidifying")
 
         return {
             "profile": config[CONF_OBJECT_TYPE],
@@ -226,18 +235,25 @@ class PenguFreshCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "absolute_humidity": out_ah,
                 "dew_point_c": out_dew_c,
             },
-            "humidity": {
-                "recommend": any(room["recommend"] for room in humidity_rooms),
-                "rooms": humidity_rooms,
-                "max_relative_humidity": max_rh,
-                "min_absolute_humidity_delta": min_ah_delta,
-            },
-            "temperature": {
-                "recommend": any(room["recommend"] for room in temperature_rooms),
-                "rooms": temperature_rooms,
+            "settings": {
                 "target_temperature_c": target_temp_c,
+                "target_relative_humidity": target_rh,
                 "min_temperature_delta_c": min_temp_delta_c,
+                "min_absolute_humidity_delta": min_ah_delta,
                 "moisture_guard": moisture_guard,
+            },
+            "rooms": rooms,
+            "overall": {
+                "recommend": bool(recommended_rooms),
+                "recommended_rooms": [room["name"] for room in recommended_rooms],
+                "reasons": overall_reasons,
+                "reason_code": (
+                    "cooling_and_dehumidifying"
+                    if len(overall_reasons) == 2
+                    else overall_reasons[0]
+                    if overall_reasons
+                    else "no_ventilation_benefit"
+                ),
             },
             "unavailable_rooms": unavailable_rooms,
             "basement_protection": config[CONF_OBJECT_TYPE] == OBJECT_BASEMENT and moisture_guard,

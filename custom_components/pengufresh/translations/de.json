@@ -5,7 +5,7 @@
     "step": {
       "user": {
         "title": "Lüftungsbereich anlegen",
-        "description": "Lege einen unabhängigen PenguFresh an. Du kannst mehrere Instanzen erstellen, zum Beispiel für Wohnung, Keller und Garage.",
+        "description": "Lege eine unabhängige PenguFresh-Instanz an, zum Beispiel für Wohnung, Keller oder Garage. Die Instanz wird anschließend direkt unter Geräte & Dienste → Integrationen verwaltet.",
         "data": {
           "name": "Name",
           "object_type": "Objekttyp"
@@ -34,7 +34,7 @@
         "description": "Die Standardwerte sind auf den gewählten Objekttyp abgestimmt. Temperaturwerte werden in der in Home Assistant eingestellten Einheit angezeigt; intern wird einheitlich gerechnet.",
         "data": {
           "target_temperature_c": "Zieltemperatur zum Abkühlen",
-          "max_relative_humidity": "Feuchtigkeitsgrenze",
+          "max_relative_humidity": "Gewünschte relative Luftfeuchtigkeit",
           "min_temperature_delta_c": "Minimale Temperaturdifferenz innen/außen",
           "min_absolute_humidity_delta": "Minimaler Vorteil der absoluten Feuchte außen",
           "temperature_hysteresis_c": "Temperatur-Hysterese",
@@ -54,7 +54,7 @@
     "step": {
       "init": {
         "title": "PenguFresh konfigurieren",
-        "description": "Ändere allgemeine Einstellungen oder Innenräume und speichere anschließend die Änderungen.",
+        "description": "Ändere allgemeine Einstellungen oder Innenräume und speichere anschließend die Änderungen. Für jeden Innenraum erzeugt PenguFresh einen klaren Lüften-Ja/Nein-Sensor.",
         "menu_options": {
           "general": "Allgemeine Einstellungen und Grenzwerte",
           "rooms": "Innenräume verwalten",
@@ -70,7 +70,7 @@
           "outdoor_temperature": "Außentemperatursensor",
           "outdoor_humidity": "Außen-Luftfeuchtigkeitssensor",
           "target_temperature_c": "Zieltemperatur zum Abkühlen",
-          "max_relative_humidity": "Feuchtigkeitsgrenze",
+          "max_relative_humidity": "Gewünschte relative Luftfeuchtigkeit",
           "min_temperature_delta_c": "Minimale Temperaturdifferenz innen/außen",
           "min_absolute_humidity_delta": "Minimaler Vorteil der absoluten Feuchte außen",
           "temperature_hysteresis_c": "Temperatur-Hysterese",
@@ -147,11 +147,8 @@
   },
   "entity": {
     "binary_sensor": {
-      "humidity_ventilation": {
-        "name": "Lüften Feuchtigkeit"
-      },
-      "temperature_ventilation": {
-        "name": "Lüften Temperatur"
+      "ventilation": {
+        "name": "Lüften"
       }
     }
   }

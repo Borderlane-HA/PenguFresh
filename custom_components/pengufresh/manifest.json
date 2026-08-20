@@ -8,9 +8,9 @@
     "lovelace"
   ],
   "documentation": "https://github.com/Borderlane-HA/PenguFresh",
-  "integration_type": "helper",
+  "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/Borderlane-HA/PenguFresh/issues",
   "requirements": [],
-  "version": "0.3.5"
+  "version": "0.4.0"
 }

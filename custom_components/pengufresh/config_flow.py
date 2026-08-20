@@ -176,7 +176,7 @@ def _store_settings(hass, target: dict[str, Any], user_input: dict[str, Any]) ->
 class PenguFreshConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for PenguFresh."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         self._data: dict[str, Any] = {CONF_ROOMS: []}

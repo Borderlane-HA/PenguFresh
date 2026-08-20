@@ -4,16 +4,15 @@
 
 # PenguFresh
 
-**PenguFresh** is a Home Assistant helper for smart ventilation recommendations. It compares indoor and outdoor **temperature** and **humidity** and uses **absolute humidity** and **dew point** to decide whether opening the windows is useful for cooling or dehumidifying.
+**PenguFresh** is a Home Assistant integration for clear **ventilate / do not ventilate** recommendations. It combines indoor and outdoor **temperature**, **relative humidity**, **absolute humidity** and **dew point** instead of exposing separate competing recommendations.
 
-| 🌡️ Temperature | 💧 Humidity | 🏠 Profiles | 🪟 Dashboard |
+| 🪟 One clear decision | 🌡️ Cooling | 💧 Dehumidifying | 🏠 Profiles |
 |---|---|---|---|
-| Ventilate when outdoor air can cool the room | Ventilate only when outdoor air can actually remove moisture | Apartment, Basement, Garage and Room | Compact 6×1 and 6×2 PenguFresh cards |
+| One ventilation status per room | Uses useful indoor/outdoor temperature difference | Verifies that outdoor air can really remove moisture | Apartment, Basement, Garage and Room |
 
-PenguFresh supports multiple indoor rooms, multiple instances and automatic **°C / °F** handling. Each instance creates two binary sensors that can also be used in automations, conditions and templates:
+Each configured room creates its own **Ventilate** binary sensor. Every PenguFresh instance also creates one **overall Ventilate** sensor that turns on when at least one room should be ventilated. The reason is available as entity attributes, for example **Cooling**, **Dehumidifying**, or **Cooling and dehumidifying**.
 
-- **Ventilate for heat**
-- **Ventilate for humidity**
+The default desired relative humidity in 0.4 is **50 %**. This is only the indoor target: PenguFresh still checks absolute humidity before recommending ventilation for moisture control.
 
 ## Installation via HACS
 
@@ -21,63 +20,33 @@ PenguFresh supports multiple indoor rooms, multiple instances and automatic **°
 2. Open **⋮ → Custom repositories**.
 3. Add `https://github.com/Borderlane-HA/PenguFresh` and select **Integration**.
 4. Install **PenguFresh** and restart Home Assistant.
-5. Go to **Settings → Devices & services → Helpers → Create helper**.
-6. Select **PenguFresh** and complete the setup.
+5. Go to **Settings → Devices & services → Integrations → Add integration**.
+6. Search for **PenguFresh** and complete the setup.
 
-> [!IMPORTANT]
-> **PenguFresh is a Home Assistant helper integration.** Its instances are therefore managed under **Settings → Devices & services → Helpers** and do **not** appear as a normal integration card under **Settings → Devices & services → Integrations**. This is expected Home Assistant behavior.
+## Configuration
+
+Starting with **0.4.0**, PenguFresh is managed as a normal Home Assistant integration:
+
+**Settings → Devices & services → Integrations → PenguFresh → Configure**
+
+From there you can edit outdoor sensors and limits, add/edit/remove indoor rooms, and change the profile without searching through the Helpers view.
 
 ## Dashboard card
 
-PenguFresh includes its own dashboard card. Open a dashboard and choose:
+PenguFresh includes its own dashboard card:
 
 **Edit dashboard → Add card → PenguFresh**
 
-Then select the PenguFresh instance and the desired size:
+Choose the PenguFresh instance, then choose either **Overall** or a specific room. Two fixed card sizes are available:
 
 - **Small – 6 columns × 1 row**
 - **Large – 6 columns × 2 rows**
 
-The card intentionally stays simple: the left tile represents **temperature / cooling**, the right tile **humidity**. A **green status dot** means ventilation is recommended, a **red status dot** means keep the windows closed. The window symbol changes between open and closed automatically.
+The window icon opens when ventilation is recommended and closes when it is not. A **green status** means ventilate, a **red status** means keep the windows closed. Small reason icons show whether the recommendation comes from **cooling**, **dehumidifying**, or both.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/dashboard-card-editor.png" alt="PenguFresh dashboard card editor" width="900">
-</p>
+## Upgrade from 0.3.x
 
-## Managing PenguFresh helpers
-
-All PenguFresh entities are visible in **Settings → Devices & services → Helpers**. This is the central place to find the two generated sensors for each PenguFresh instance.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/helpers-overview.png" alt="PenguFresh helpers in Home Assistant" width="900">
-</p>
-
-From the Helpers view you can **edit or remove** PenguFresh helpers using the **⋮ menu** on the right side of the entry. Opening a PenguFresh entity also gives access to **Options for PenguFresh**.
-
-<table>
-<tr>
-<td width="50%" valign="top">
-  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/helper-options.png" alt="Options for PenguFresh on a helper entity">
-</td>
-<td width="50%" valign="top">
-  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/pengufresh-configure.png" alt="PenguFresh configuration menu">
-</td>
-</tr>
-</table>
-
-Inside **Options for PenguFresh** you can change the configuration at any time:
-
-- **General settings and thresholds**
-- **Indoor rooms and their sensors**
-- save the updated configuration without recreating the helper
-
-If an instance is no longer needed, remove it from the **Helpers** view using its **⋮ menu**.
-
-## How the recommendation works
-
-PenguFresh does not simply compare relative humidity percentages. For humidity decisions it calculates **absolute humidity** and **dew point**, which is especially important for basements where warm, humid outdoor air can make conditions worse even if the outdoor relative humidity looks acceptable.
-
-The selected profile provides sensible defaults for **Apartment**, **Basement**, **Garage** or **Room**, while the thresholds remain editable through the PenguFresh helper options.
+Existing PenguFresh instances are migrated automatically. The previous separate **Ventilate for temperature** and **Ventilate for humidity** entities are replaced by the new combined room and overall ventilation entities. Old profile-default humidity values are migrated to the new **50 %** target; non-default custom humidity values are preserved.
 
 ---
 

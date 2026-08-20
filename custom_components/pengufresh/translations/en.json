@@ -5,7 +5,7 @@
     "step": {
       "user": {
         "title": "Create ventilation area",
-        "description": "Create an independent ventilation advisor. You can add multiple instances, for example for an apartment, basement and garage.",
+        "description": "Create an independent PenguFresh instance, for example for an apartment, basement or garage. The instance is then managed directly under Devices & services → Integrations.",
         "data": {
           "name": "Name",
           "object_type": "Area type"
@@ -34,7 +34,7 @@
         "description": "The defaults are tailored to the selected area type. Temperature values are shown in your Home Assistant temperature unit. Calculations are normalized internally.",
         "data": {
           "target_temperature_c": "Cooling target temperature",
-          "max_relative_humidity": "Humidity threshold",
+          "max_relative_humidity": "Desired relative humidity",
           "min_temperature_delta_c": "Minimum indoor/outdoor temperature difference",
           "min_absolute_humidity_delta": "Minimum absolute humidity advantage outdoors",
           "temperature_hysteresis_c": "Temperature hysteresis",
@@ -54,7 +54,7 @@
     "step": {
       "init": {
         "title": "Configure PenguFresh",
-        "description": "Change general settings, manage indoor areas, then save your changes.",
+        "description": "Change general settings or indoor areas, then save your changes. PenguFresh creates one clear yes/no ventilation sensor for each indoor area.",
         "menu_options": {
           "general": "General settings and thresholds",
           "rooms": "Manage indoor areas",
@@ -70,7 +70,7 @@
           "outdoor_temperature": "Outdoor temperature sensor",
           "outdoor_humidity": "Outdoor humidity sensor",
           "target_temperature_c": "Cooling target temperature",
-          "max_relative_humidity": "Humidity threshold",
+          "max_relative_humidity": "Desired relative humidity",
           "min_temperature_delta_c": "Minimum indoor/outdoor temperature difference",
           "min_absolute_humidity_delta": "Minimum absolute humidity advantage outdoors",
           "temperature_hysteresis_c": "Temperature hysteresis",
@@ -147,11 +147,8 @@
   },
   "entity": {
     "binary_sensor": {
-      "humidity_ventilation": {
-        "name": "Ventilate for humidity"
-      },
-      "temperature_ventilation": {
-        "name": "Ventilate for cooling"
+      "ventilation": {
+        "name": "Ventilate"
       }
     }
   }
