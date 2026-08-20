@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.4.1";
+const PENGUFRESH_CARD_VERSION = "0.4.2";
 
 const PF_LAYOUTS = {
   small: { columns: 6, rows: 1 },
