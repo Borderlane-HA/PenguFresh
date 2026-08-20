@@ -27,7 +27,7 @@ _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 CARD_FILE = FRONTEND_DIR / "pengufresh-card.js"
 CARD_URL = "/pengufresh/pengufresh-card.js"
-CARD_VERSION = "0.4.0"
+CARD_VERSION = "0.4.1"
 
 
 type PenguFreshConfigEntry = ConfigEntry[PenguFreshCoordinator]
@@ -81,46 +81,54 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate 0.3.x helper entries to the 0.4 service model."""
-    if entry.version >= 2:
-        return True
-
+    """Migrate older PenguFresh config entries."""
     data = dict(entry.data)
     options = dict(entry.options)
-    object_type = str(options.get(CONF_OBJECT_TYPE, data.get(CONF_OBJECT_TYPE, "apartment")))
-    old_default = LEGACY_PROFILE_HUMIDITY_DEFAULTS.get(object_type)
 
-    # Preserve custom humidity settings, but migrate the old profile default to
-    # the new 50 % desired humidity default.
-    for target in (data, options):
-        if CONF_MAX_RELATIVE_HUMIDITY not in target or old_default is None:
-            continue
-        try:
-            current = float(target[CONF_MAX_RELATIVE_HUMIDITY])
-        except (TypeError, ValueError):
-            continue
-        if abs(current - old_default) < 0.001:
-            target[CONF_MAX_RELATIVE_HUMIDITY] = 50.0
+    if entry.version < 2:
+        object_type = str(options.get(CONF_OBJECT_TYPE, data.get(CONF_OBJECT_TYPE, "apartment")))
+        old_default = LEGACY_PROFILE_HUMIDITY_DEFAULTS.get(object_type)
+
+        # Preserve custom humidity settings, but migrate the old profile default
+        # to the new 50 % desired humidity default.
+        for target in (data, options):
+            if CONF_MAX_RELATIVE_HUMIDITY not in target or old_default is None:
+                continue
+            try:
+                current = float(target[CONF_MAX_RELATIVE_HUMIDITY])
+            except (TypeError, ValueError):
+                continue
+            if abs(current - old_default) < 0.001:
+                target[CONF_MAX_RELATIVE_HUMIDITY] = 50.0
+
+        # Remove the two legacy entity registry entries. 0.4 creates one combined
+        # status per room plus one overall status instead.
+        registry = er.async_get(hass)
+        for unique_id in (
+            f"{entry.entry_id}_humidity_ventilation",
+            f"{entry.entry_id}_temperature_ventilation",
+        ):
+            entity_id = registry.async_get_entity_id("binary_sensor", DOMAIN, unique_id)
+            if entity_id:
+                registry.async_remove(entity_id)
+
+    # 0.4.1: clean the old branding prefix from the config-entry title.
+    # Only exact PenguFresh prefixes are touched; custom names stay unchanged.
+    title = entry.title
+    for prefix in ("PenguFresh - ", "PenguFresh – "):
+        if title.startswith(prefix) and title[len(prefix):].strip():
+            title = title[len(prefix):].strip()
+            break
 
     hass.config_entries.async_update_entry(
         entry,
         data=data,
         options=options,
-        version=2,
+        title=title,
+        version=3,
     )
 
-    # Remove the two legacy entity registry entries. 0.4 creates one combined
-    # status per room plus one overall status instead.
-    registry = er.async_get(hass)
-    for unique_id in (
-        f"{entry.entry_id}_humidity_ventilation",
-        f"{entry.entry_id}_temperature_ventilation",
-    ):
-        entity_id = registry.async_get_entity_id("binary_sensor", DOMAIN, unique_id)
-        if entity_id:
-            registry.async_remove(entity_id)
-
-    _LOGGER.info("Migrated PenguFresh config entry %s to version 2", entry.entry_id)
+    _LOGGER.info("Migrated PenguFresh config entry %s to version 3", entry.entry_id)
     return True
 
 

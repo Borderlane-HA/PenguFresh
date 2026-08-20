@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.4.0";
+const PENGUFRESH_CARD_VERSION = "0.4.1";
 
 const PF_LAYOUTS = {
   small: { columns: 6, rows: 1 },
@@ -201,9 +201,6 @@ class PenguFreshCard extends HTMLElement {
     const stateClass = !available ? "unavailable" : active ? "active" : "inactive";
     const statusText = !available ? t.unavailable : active ? t.ventilate : t.keepClosed;
     const windowIcon = active ? "mdi:window-open-variant" : "mdi:window-closed-variant";
-    const roomName = stateObj.attributes?.pengufresh_kind === "overall"
-      ? stateObj.attributes?.pengufresh_instance || t.overall
-      : stateObj.attributes?.pengufresh_room || stateObj.attributes?.friendly_name || "PenguFresh";
     const reason = reasonInfo(stateObj, t);
     const reasonIcons = reason.icons.map((item) => `<ha-icon class="reason-icon ${item.cls}" icon="${item.icon}"></ha-icon>`).join("");
 
@@ -216,7 +213,6 @@ class PenguFreshCard extends HTMLElement {
         <div class="reason-icons">${reasonIcons}</div>
         <div class="copy">
           <strong>${esc(statusText)}</strong>
-          <span class="room">${esc(roomName)}</span>
           <span class="reason">${esc(reason.label)}</span>
         </div>
       </ha-card>
@@ -279,7 +275,6 @@ class PenguFreshCard extends HTMLElement {
       .reason-icon.blocked { color:#7e57c2; }
       .copy { min-width:0; display:grid; gap:3px; }
       .copy strong { font-size:20px; line-height:1.1; }
-      .room { font-size:13px; color:var(--primary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .reason { font-size:12px; color:var(--secondary-text-color); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .small {
         grid-template-columns:auto auto;
