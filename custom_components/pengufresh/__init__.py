@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 CARD_FILE = FRONTEND_DIR / "pengufresh-card.js"
 CARD_URL = "/pengufresh/pengufresh-card.js"
-CARD_VERSION = "0.3.2"
+CARD_VERSION = "0.3.3"
 
 
 type PenguFreshConfigEntry = ConfigEntry[PenguFreshCoordinator]

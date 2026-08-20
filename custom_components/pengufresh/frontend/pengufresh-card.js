@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.3.2";
+const PENGUFRESH_CARD_VERSION = "0.3.3";
 
 const PF_LAYOUTS = {
   small: { columns: 6, rows: 1 },
@@ -393,25 +393,32 @@ class PenguFreshCard extends HTMLElement {
 
       /* Small 6 × 1: icon-focused, centered and symmetrical. */
       .small .statuses {
-        gap: 6px;
-        padding: 6px;
+        gap: 5px;
+        padding: 5px 7px;
       }
 
       .small .status {
-        border-radius: 14px;
-        padding: 6px;
+        border-radius: 13px;
+        padding: 4px 7px;
+        overflow: hidden;
       }
 
       .small .icon-stack {
-        width: 44px;
-        height: 44px;
-        border-radius: 13px;
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
       }
 
-      .small .category-icon { --mdc-icon-size: 25px; }
-      .small .window-badge { width: 22px; height: 22px; right: -5px; bottom: -5px; border-radius: 8px; }
-      .small .window-icon { --mdc-icon-size: 15px; }
-      .small .dot { top: 8px; right: 8px; width: 8px; height: 8px; }
+      .small .category-icon { --mdc-icon-size: 22px; }
+      .small .window-badge {
+        width: 18px;
+        height: 18px;
+        right: -2px;
+        bottom: -2px;
+        border-radius: 7px;
+      }
+      .small .window-icon { --mdc-icon-size: 13px; }
+      .small .dot { top: 7px; right: 7px; width: 7px; height: 7px; }
 
       /* Large 6 × 2: same concept, more breathing room and larger symbols. */
       .large .statuses {
