@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.2.7";
+const PENGUFRESH_CARD_VERSION = "0.2.8";
 
 const PF_DEFAULT_LAYOUT = "full_large";
 const PF_LAYOUTS = {
@@ -1072,8 +1072,7 @@ class PenguFreshCardEditor extends HTMLElement {
         .position-stage.half { max-width:330px; margin-inline:auto; }
         .position-label { position:absolute; transform:translate(-50%,-50%); user-select:none; touch-action:none; cursor:grab; padding:7px 11px; border-radius:999px; border:1px solid var(--divider-color); background:var(--card-background-color); color:var(--primary-text-color); box-shadow:0 2px 6px rgba(0,0,0,.08); font-size:11px; font-weight:600; white-space:nowrap; }
         .position-label:active { cursor:grabbing; box-shadow:0 4px 12px rgba(0,0,0,.14); }
-        .position-label.is-hidden { opacity:.35; border-style:dashed; }
-        .position-label .hidden-label { margin-left:5px; font-size:9px; font-weight:400; color:var(--secondary-text-color); }
+        .position-empty { position:absolute; inset:0; display:grid; place-items:center; color:var(--secondary-text-color); font-size:18px; }
         .color-field { display:grid; gap:5px; font-size:11px; color:var(--secondary-text-color); }
         input[type="color"] { width:100%; height:40px; padding:3px; border:1px solid var(--divider-color); border-radius:8px; background:var(--card-background-color); cursor:pointer; }
       </style>`;
@@ -1147,44 +1146,82 @@ class PenguFreshCardEditor extends HTMLElement {
 
   _positionBuilder(t, layoutKey) {
     const labels = { title:t.blockTitle, advice:t.blockAdvice, outdoor:t.blockOutdoor, dew:t.blockDew, window:t.blockWindow, humidity:t.blockHumidity, cooling:t.blockCooling, rooms:t.blockRooms };
-    const visible = { title:pfBool(this._config,"show_title"), advice:pfBool(this._config,"show_advice"), outdoor:pfBool(this._config,"show_outdoor"), dew:pfBool(this._config,"show_dew_point") && pfBool(this._config,"show_outdoor"), window:pfBool(this._config,"show_window"), humidity:pfBool(this._config,"show_humidity"), cooling:pfBool(this._config,"show_cooling"), rooms:pfBool(this._config,"show_rooms") };
+    const visible = {
+      title:pfBool(this._config,"show_title"),
+      advice:pfBool(this._config,"show_advice"),
+      outdoor:pfBool(this._config,"show_outdoor"),
+      dew:pfBool(this._config,"show_dew_point") && pfBool(this._config,"show_outdoor"),
+      window:pfBool(this._config,"show_window"),
+      humidity:pfBool(this._config,"show_humidity"),
+      cooling:pfBool(this._config,"show_cooling"),
+      rooms:pfBool(this._config,"show_rooms"),
+    };
     const positions = pfPositionMap(this._config, layoutKey);
-    return PF_BLOCKS.map((key) => `<div class="position-label ${visible[key] ? "" : "is-hidden"}" data-block="${key}" style="${pfPositionStyle(positions[key])}">${esc(labels[key])}${visible[key] ? "" : `<span class="hidden-label">${esc(t.hidden)}</span>`}</div>`).join("");
+    const activeBlocks = PF_BLOCKS.filter((key) => visible[key]);
+    if (!activeBlocks.length) {
+      return `<div class="position-empty">–</div>`;
+    }
+    return activeBlocks
+      .map((key) => `<div class="position-label" data-block="${key}" style="${pfPositionStyle(positions[key])}">${esc(labels[key])}</div>`)
+      .join("");
   }
 
   _bindPositionDrag(layoutKey) {
     const stage = this.shadowRoot.querySelector("#position-stage");
     if (!stage) return;
-    stage.querySelectorAll(".position-label").forEach((item) => {
-      item.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        item.setPointerCapture?.(event.pointerId);
-        const move = (moveEvent) => {
-          const rect = stage.getBoundingClientRect();
-          if (!rect.width || !rect.height) return;
-          const x = Math.max(3, Math.min(97, ((moveEvent.clientX - rect.left) / rect.width) * 100));
-          const y = Math.max(3, Math.min(97, ((moveEvent.clientY - rect.top) / rect.height) * 100));
-          item.style.left = `${x}%`;
-          item.style.top = `${y}%`;
-          item.dataset.x = String(x);
-          item.dataset.y = String(y);
-        };
-        const end = () => {
-          item.removeEventListener("pointermove", move);
-          item.removeEventListener("pointerup", end);
-          item.removeEventListener("pointercancel", end);
-          const base = pfPositionMap(this._config, layoutKey);
-          const x = Number(item.dataset.x);
-          const y = Number(item.dataset.y);
-          if (Number.isFinite(x) && Number.isFinite(y)) base[item.dataset.block] = { x:Number(x.toFixed(2)), y:Number(y.toFixed(2)) };
-          const positions = { ...(this._config.positions || {}), [layoutKey]:base };
-          this._fireConfigChanged({ ...this._config, positions });
-        };
-        item.addEventListener("pointermove", move);
-        item.addEventListener("pointerup", end);
-        item.addEventListener("pointercancel", end);
-      });
+
+    let activeItem = null;
+    let activePointerId = null;
+    let latestPosition = null;
+
+    const updatePosition = (event) => {
+      if (!activeItem || event.pointerId !== activePointerId) return;
+      const rect = stage.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const x = Math.max(3, Math.min(97, ((event.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(3, Math.min(97, ((event.clientY - rect.top) / rect.height) * 100));
+      latestPosition = { x, y };
+      activeItem.style.left = `${x}%`;
+      activeItem.style.top = `${y}%`;
+    };
+
+    const finishDrag = (event) => {
+      if (!activeItem || event.pointerId !== activePointerId) return;
+      const item = activeItem;
+      const block = item.dataset.block;
+      const pointerId = activePointerId;
+      activeItem = null;
+      activePointerId = null;
+      try { stage.releasePointerCapture?.(pointerId); } catch (_) {}
+
+      if (!latestPosition || !block) {
+        latestPosition = null;
+        return;
+      }
+
+      const base = pfPositionMap(this._config, layoutKey);
+      base[block] = {
+        x:Number(latestPosition.x.toFixed(2)),
+        y:Number(latestPosition.y.toFixed(2)),
+      };
+      latestPosition = null;
+      const positions = { ...(this._config.positions || {}), [layoutKey]:base };
+      this._fireConfigChanged({ ...this._config, positions });
+    };
+
+    stage.addEventListener("pointerdown", (event) => {
+      const item = event.target.closest?.(".position-label");
+      if (!item || !stage.contains(item)) return;
+      event.preventDefault();
+      activeItem = item;
+      activePointerId = event.pointerId;
+      latestPosition = null;
+      try { stage.setPointerCapture?.(event.pointerId); } catch (_) {}
+      updatePosition(event);
     });
+    stage.addEventListener("pointermove", updatePosition);
+    stage.addEventListener("pointerup", finishDrag);
+    stage.addEventListener("pointercancel", finishDrag);
   }
 
   _colorField(key, label, value) {

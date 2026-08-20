@@ -45,7 +45,7 @@ Smaller layouts intentionally show fewer details. Manual card resizing is still 
 
 The visual card editor also lets you choose which elements are shown (title, recommendation, outdoor values, dew point, animated window, humidity/cooling status, recommended rooms and detailed reasons). The PenguFresh branding is hidden in the dashboard card by default; an optional room/instance title can be enabled.
 
-From version **0.2.7**, medium and large cards use a **free-position editor**. Recommendation, outdoor values, dew point, window, humidity, cooling and rooms appear as draggable labels on a layout surface and can be placed freely for each card size. Positions are stored separately for each layout preset. Compact 1-row layouts continue to use their optimized automatic arrangement.
+From version **0.2.8**, medium and large cards use a **free-position editor**. Only content modules that are enabled for the card are shown in the position editor. Drag the visible labels freely on the layout surface; positions are stored separately for each layout preset. Compact 1-row layouts continue to use their optimized automatic arrangement.
 
 Detailed humidity and cooling reasons are **hidden by default** and can be enabled separately. The short `Ventilate / not needed` status can also be hidden. The **Texts** section allows recommendation messages and short labels/status texts to be overridden per dashboard card. Empty fields use PenguFresh's automatic German/English translations.
 
