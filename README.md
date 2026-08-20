@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/pengufresh-banner.png" alt="PenguFresh – smart ventilation recommendations for Home Assistant" width="100%">
+  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/pengufresh-banner.png" alt="PenguFresh – smart ventilation recommendations for Home Assistant" width="100%">
 </p>
 
 # PenguFresh
@@ -41,7 +41,7 @@ Then select the PenguFresh instance and the desired size:
 The card intentionally stays simple: the left tile represents **temperature / cooling**, the right tile **humidity**. A **green status dot** means ventilation is recommended, a **red status dot** means keep the windows closed. The window symbol changes between open and closed automatically.
 
 <p align="center">
-  <img src="docs/images/dashboard-card-editor.png" alt="PenguFresh dashboard card editor" width="900">
+  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/dashboard-card-editor.png" alt="PenguFresh dashboard card editor" width="900">
 </p>
 
 ## Managing PenguFresh helpers
@@ -49,7 +49,7 @@ The card intentionally stays simple: the left tile represents **temperature / co
 All PenguFresh entities are visible in **Settings → Devices & services → Helpers**. This is the central place to find the two generated sensors for each PenguFresh instance.
 
 <p align="center">
-  <img src="docs/images/helpers-overview.png" alt="PenguFresh helpers in Home Assistant" width="900">
+  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/helpers-overview.png" alt="PenguFresh helpers in Home Assistant" width="900">
 </p>
 
 From the Helpers view you can **edit or remove** PenguFresh helpers using the **⋮ menu** on the right side of the entry. Opening a PenguFresh entity also gives access to **Options for PenguFresh**.
@@ -57,10 +57,10 @@ From the Helpers view you can **edit or remove** PenguFresh helpers using the **
 <table>
 <tr>
 <td width="50%" valign="top">
-  <img src="docs/images/helper-options.png" alt="Options for PenguFresh on a helper entity">
+  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/helper-options.png" alt="Options for PenguFresh on a helper entity">
 </td>
 <td width="50%" valign="top">
-  <img src="docs/images/pengufresh-configure.png" alt="PenguFresh configuration menu">
+  <img src="https://raw.githubusercontent.com/Borderlane-HA/PenguFresh/main/docs/images/pengufresh-configure.png" alt="PenguFresh configuration menu">
 </td>
 </tr>
 </table>
