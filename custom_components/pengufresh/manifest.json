@@ -4,12 +4,13 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": [
-    "frontend"
+    "frontend",
+    "lovelace"
   ],
-  "documentation": "https://github.com/YOUR_GITHUB_USERNAME/PenguFresh",
+  "documentation": "https://github.com/Borderlane-HA/PenguFresh",
   "integration_type": "helper",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/YOUR_GITHUB_USERNAME/PenguFresh/issues",
+  "issue_tracker": "https://github.com/Borderlane-HA/PenguFresh/issues",
   "requirements": [],
-  "version": "0.2.0"
+  "version": "0.2.1"
 }

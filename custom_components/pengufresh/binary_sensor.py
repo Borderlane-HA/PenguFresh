@@ -72,7 +72,7 @@ class PenguFreshBinarySensor(CoordinatorEntity[PenguFreshCoordinator], BinarySen
             name=self.entry.title,
             manufacturer="PenguFresh",
             model="Ventilation advisor",
-            configuration_url="homeassistant://navigate/config/helpers",
+            configuration_url="homeassistant://config/helpers",
         )
 
     @property

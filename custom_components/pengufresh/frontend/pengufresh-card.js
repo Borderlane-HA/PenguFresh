@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.2.0";
+const PENGUFRESH_CARD_VERSION = "0.2.1";
 
 const PF_I18N = {
   de: {
