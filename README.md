@@ -39,4 +39,4 @@ Choose a PenguFresh instance and one of two fixed layouts:
 - **Small – 6 columns × 1 row:** icon-focused view for the two recommendations.
 - **Large – 6 columns × 2 rows:** the same two recommendations with short text labels.
 
-The card intentionally focuses only on **Ventilate for heat** and **Ventilate for humidity**. Detailed values remain available on the generated Home Assistant entities and can still be used in automations and templates.
+The card intentionally focuses only on **Ventilate for heat** and **Ventilate for humidity**. Both layouts now use a clean icon-only design: a green status dot means ventilation is recommended, a red status dot means windows should stay closed, and the window overlay changes between open and closed accordingly. Detailed values remain available on the generated Home Assistant entities and can still be used in automations and templates.

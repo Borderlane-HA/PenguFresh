@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.3.0";
+const PENGUFRESH_CARD_VERSION = "0.3.2";
 
 const PF_LAYOUTS = {
   small: { columns: 6, rows: 1 },
@@ -20,7 +20,7 @@ const PF_I18N = {
     unavailable: "Nicht verfügbar",
     noInstance: "Keine PenguFresh-Instanz gefunden",
     setup: "Wähle eine PenguFresh-Instanz aus.",
-    hint: "Klein zeigt nur die beiden Statussymbole. Groß ergänzt kurze Texte.",
+    hint: "Klein und Groß zeigen nur die beiden Statussymbole. Groß nutzt lediglich mehr Platz und größere Darstellung.",
   },
   en: {
     cardName: "PenguFresh",
@@ -36,7 +36,7 @@ const PF_I18N = {
     unavailable: "Unavailable",
     noInstance: "No PenguFresh instance found",
     setup: "Select a PenguFresh instance.",
-    hint: "Small shows only the two status symbols. Large adds short text labels.",
+    hint: "Small and large both show only the two status symbols. Large simply uses more space and larger visuals.",
   },
 };
 
@@ -238,16 +238,19 @@ class PenguFreshCard extends HTMLElement {
     const windowIcon = data.active ? "mdi:window-open-variant" : "mdi:window-closed-variant";
 
     return `
-      <button class="status ${kind} ${stateClass}" ${entityId ? `data-entity="${esc(entityId)}"` : "disabled"}>
+      <button
+        class="status ${kind} ${stateClass}"
+        ${entityId ? `data-entity="${esc(entityId)}"` : "disabled"}
+        title="${esc(label)}: ${esc(stateText)}"
+        aria-label="${esc(label)}: ${esc(stateText)}"
+      >
+        <span class="dot" aria-hidden="true"></span>
         <div class="icon-stack">
           <ha-icon class="category-icon" icon="${icon}"></ha-icon>
-          <ha-icon class="window-icon" icon="${windowIcon}"></ha-icon>
+          <div class="window-badge">
+            <ha-icon class="window-icon" icon="${windowIcon}"></ha-icon>
+          </div>
         </div>
-        <div class="copy">
-          <strong>${esc(label)}</strong>
-          <span>${esc(stateText)}</span>
-        </div>
-        <span class="dot" aria-hidden="true"></span>
       </button>`;
   }
 
@@ -262,8 +265,9 @@ class PenguFreshCard extends HTMLElement {
         height: 100%;
         overflow: hidden;
         box-sizing: border-box;
-        border-radius: var(--ha-card-border-radius, 16px);
-        background: var(--ha-card-background, var(--card-background-color));
+        border-radius: var(--ha-card-border-radius, 18px);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--card-background-color) 96%, white 4%), var(--card-background-color));
+        box-shadow: 0 8px 24px rgba(0,0,0,.08);
       }
 
       .statuses {
@@ -276,135 +280,166 @@ class PenguFreshCard extends HTMLElement {
       }
 
       .status {
+        position: relative;
         appearance: none;
-        border: 1px solid var(--divider-color);
-        border-radius: 13px;
-        background: color-mix(in srgb, var(--card-background-color) 94%, var(--primary-text-color) 6%);
+        border: 1px solid color-mix(in srgb, var(--divider-color) 88%, transparent);
+        border-radius: 18px;
+        background: linear-gradient(180deg, color-mix(in srgb, var(--card-background-color) 97%, white 3%), color-mix(in srgb, var(--card-background-color) 93%, var(--primary-text-color) 7%));
         color: var(--primary-text-color);
         min-width: 0;
         height: 100%;
         box-sizing: border-box;
         font: inherit;
-        text-align: left;
         cursor: pointer;
-        display: grid;
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        transition: background .2s ease, border-color .2s ease, transform .15s ease;
+        justify-content: center;
+        padding: 10px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 2px 8px rgba(0,0,0,.06);
+        transition: background .2s ease, border-color .2s ease, transform .15s ease, box-shadow .2s ease;
+      }
+
+      .status:hover:not(:disabled) {
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.42), 0 6px 14px rgba(0,0,0,.08);
       }
 
       .status:active:not(:disabled) { transform: scale(.985); }
       .status:disabled { cursor: default; opacity: .62; }
 
       .status.heat.active {
-        background: color-mix(in srgb, #0284c7 18%, var(--card-background-color));
-        border-color: color-mix(in srgb, #0284c7 55%, var(--divider-color));
+        background: linear-gradient(180deg, color-mix(in srgb, #7dd3fc 24%, var(--card-background-color)), color-mix(in srgb, #0ea5e9 16%, var(--card-background-color)));
+        border-color: color-mix(in srgb, #0ea5e9 55%, var(--divider-color));
       }
 
       .status.humidity.active {
-        background: color-mix(in srgb, #059669 18%, var(--card-background-color));
-        border-color: color-mix(in srgb, #059669 55%, var(--divider-color));
+        background: linear-gradient(180deg, color-mix(in srgb, #86efac 24%, var(--card-background-color)), color-mix(in srgb, #10b981 16%, var(--card-background-color)));
+        border-color: color-mix(in srgb, #10b981 55%, var(--divider-color));
+      }
+
+      .status.inactive {
+        background: linear-gradient(180deg, color-mix(in srgb, #fee2e2 28%, var(--card-background-color)), color-mix(in srgb, #fca5a5 12%, var(--card-background-color)));
+        border-color: color-mix(in srgb, var(--error-color, #db4437) 42%, var(--divider-color));
+      }
+
+      .status.unavailable {
+        background: linear-gradient(180deg, color-mix(in srgb, var(--card-background-color) 95%, white 5%), color-mix(in srgb, var(--card-background-color) 92%, var(--disabled-text-color) 8%));
       }
 
       .icon-stack {
         position: relative;
-        width: 42px;
-        height: 42px;
+        width: 56px;
+        height: 56px;
         display: grid;
         place-items: center;
-        border-radius: 12px;
-        background: color-mix(in srgb, var(--primary-text-color) 6%, transparent);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.35));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 3px 10px rgba(0,0,0,.08);
+      }
+
+      .status.heat .icon-stack {
+        background: linear-gradient(180deg, color-mix(in srgb, #ffedd5 90%, white 10%), color-mix(in srgb, #fed7aa 78%, transparent));
+      }
+
+      .status.humidity .icon-stack {
+        background: linear-gradient(180deg, color-mix(in srgb, #dbeafe 90%, white 10%), color-mix(in srgb, #bfdbfe 78%, transparent));
       }
 
       .category-icon {
-        --mdc-icon-size: 27px;
+        --mdc-icon-size: 31px;
       }
 
       .heat .category-icon { color: #ef6c00; }
       .humidity .category-icon { color: #039be5; }
 
-      .window-icon {
+      .window-badge {
         position: absolute;
-        right: -5px;
-        bottom: -5px;
-        --mdc-icon-size: 18px;
-        padding: 3px;
-        border-radius: 7px;
-        background: var(--card-background-color);
-        color: var(--secondary-text-color);
-        box-shadow: 0 1px 4px rgba(0,0,0,.16);
-      }
-
-      .active .window-icon {
-        color: var(--success-color, #43a047);
-      }
-
-      .copy {
-        min-width: 0;
+        right: -6px;
+        bottom: -6px;
+        width: 26px;
+        height: 26px;
         display: grid;
-        gap: 3px;
+        place-items: center;
+        border-radius: 9px;
+        background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(245,245,245,.9));
+        box-shadow: 0 2px 7px rgba(0,0,0,.18);
+        border: 1px solid rgba(0,0,0,.06);
       }
 
-      .copy strong {
-        font-size: 13px;
-        line-height: 1.15;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .copy span {
-        font-size: 12px;
+      .window-icon {
+        --mdc-icon-size: 18px;
         color: var(--secondary-text-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
+
+      .active .window-icon { color: var(--success-color, #43a047); }
+      .inactive .window-icon { color: var(--error-color, #db4437); }
+      .unavailable .window-icon { color: var(--disabled-text-color); }
 
       .dot {
-        width: 9px;
-        height: 9px;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
-        background: var(--disabled-text-color);
+        background: var(--error-color, #db4437);
+        box-shadow: 0 0 0 2px var(--card-background-color), 0 0 10px rgba(219,68,55,.18);
       }
 
-      .active .dot { background: var(--success-color, #43a047); }
-      .unavailable .dot { background: var(--error-color, #db4437); }
+      .active .dot { background: var(--success-color, #43a047); box-shadow: 0 0 0 2px var(--card-background-color), 0 0 10px rgba(67,160,71,.28); }
+      .inactive .dot { background: var(--error-color, #db4437); }
+      .unavailable .dot { background: var(--disabled-text-color); box-shadow: 0 0 0 2px var(--card-background-color); }
 
-      /* Small 6 × 1: icon-first, no explanatory text. */
+      .copy { display: none; }
+
+      /* Small 6 × 1: icon-focused, centered and symmetrical. */
       .small .statuses {
         gap: 6px;
-        padding: 5px;
+        padding: 6px;
       }
 
       .small .status {
-        grid-template-columns: 1fr;
-        place-items: center;
-        padding: 4px;
-        border-radius: 10px;
+        border-radius: 14px;
+        padding: 6px;
       }
 
       .small .icon-stack {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
       }
 
       .small .category-icon { --mdc-icon-size: 25px; }
-      .small .window-icon { --mdc-icon-size: 16px; }
-      .small .copy,
-      .small .dot { display: none; }
+      .small .window-badge { width: 22px; height: 22px; right: -5px; bottom: -5px; border-radius: 8px; }
+      .small .window-icon { --mdc-icon-size: 15px; }
+      .small .dot { top: 8px; right: 8px; width: 8px; height: 8px; }
 
-      /* Large 6 × 2: image/icon plus one short status line. */
+      /* Large 6 × 2: same concept, more breathing room and larger symbols. */
       .large .statuses {
-        padding: 9px;
-        gap: 9px;
+        padding: 10px;
+        gap: 10px;
       }
 
       .large .status {
-        min-height: 0;
+        border-radius: 19px;
+        padding: 12px;
+      }
+
+      .large .icon-stack {
+        width: 64px;
+        height: 64px;
+        border-radius: 18px;
+      }
+
+      .large .category-icon { --mdc-icon-size: 35px; }
+      .large .window-badge { width: 28px; height: 28px; right: -6px; bottom: -6px; border-radius: 10px; }
+      .large .window-icon { --mdc-icon-size: 19px; }
+      .large .dot { top: 10px; right: 10px; width: 10px; height: 10px; }
+
+      @media (max-width: 360px) {
+        .large .statuses { padding: 8px; gap: 8px; }
+        .large .status { padding: 9px; }
+        .large .icon-stack { width: 56px; height: 56px; }
+        .large .category-icon { --mdc-icon-size: 31px; }
       }
 
       .empty {
@@ -412,12 +447,6 @@ class PenguFreshCard extends HTMLElement {
         color: var(--secondary-text-color);
       }
 
-      @media (max-width: 360px) {
-        .large .status { gap: 7px; padding: 8px; }
-        .large .icon-stack { width: 36px; height: 36px; }
-        .large .copy strong { font-size: 12px; }
-        .large .copy span { font-size: 11px; }
-      }
     `;
   }
 }
