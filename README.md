@@ -45,9 +45,9 @@ Smaller layouts intentionally show fewer details. Manual card resizing is still 
 
 The visual card editor also lets you choose which elements are shown (title, recommendation, outdoor values, dew point, animated window, humidity/cooling status, recommended rooms and detailed reasons). The PenguFresh branding is hidden in the dashboard card by default; an optional room/instance title can be enabled.
 
-From version **0.2.6**, the card editor includes a **drag-and-drop layout builder**. Recommendation, outdoor values, dew point, window, humidity, cooling and rooms can be reordered per card. Hidden elements remain visible in the builder so they can be positioned before being enabled again. Medium and large cards use the configured order in a responsive grid, while compact cards automatically keep only the elements that fit.
+From version **0.2.7**, medium and large cards use a **free-position editor**. Recommendation, outdoor values, dew point, window, humidity, cooling and rooms appear as draggable labels on a layout surface and can be placed freely for each card size. Positions are stored separately for each layout preset. Compact 1-row layouts continue to use their optimized automatic arrangement.
 
-The **Texts** section allows the recommendation messages and short labels/status texts to be overridden per dashboard card. Empty fields use PenguFresh's automatic German/English translations. Long diagnostic reasons are automatically limited in the card so narrow layouts do not overflow.
+Detailed humidity and cooling reasons are **hidden by default** and can be enabled separately. The short `Ventilate / not needed` status can also be hidden. The **Texts** section allows recommendation messages and short labels/status texts to be overridden per dashboard card. Empty fields use PenguFresh's automatic German/English translations.
 
 Three color modes are available: **automatic status colors**, **Home Assistant theme**, or **custom colors** using color pickers for background, text and accent. Automatic mode changes the card color depending on the current recommendation, for example cooling, dehumidifying, both, or keeping the windows closed because outdoor air is too warm.
 

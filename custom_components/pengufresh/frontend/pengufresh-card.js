@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.2.6";
+const PENGUFRESH_CARD_VERSION = "0.2.7";
 
 const PF_DEFAULT_LAYOUT = "full_large";
 const PF_LAYOUTS = {
@@ -19,7 +19,10 @@ const PF_DEFAULTS = {
   show_humidity: true,
   show_cooling: true,
   show_rooms: true,
-  show_reasons: true,
+  show_reasons: false,
+  show_humidity_reason: false,
+  show_cooling_reason: false,
+  show_status_state: true,
   color_mode: "auto",
   background_color: "#0f766e",
   text_color: "#ffffff",
@@ -82,7 +85,10 @@ const PF_I18N = {
     showHumidity: "Status Feuchtigkeit anzeigen",
     showCooling: "Status Abkühlen anzeigen",
     showRooms: "Empfohlene Räume anzeigen",
-    showReasons: "Begründung in Statusfeldern anzeigen",
+    showReasons: "Begründungen anzeigen",
+    showHumidityReason: "Begründung bei Feuchtigkeit anzeigen",
+    showCoolingReason: "Begründung bei Abkühlen anzeigen",
+    showStatusState: "Status „Lüften / nicht nötig“ anzeigen",
     colorMode: "Farbmodus",
     colorAuto: "Automatisch nach Status",
     colorTheme: "Home-Assistant-Theme",
@@ -91,9 +97,9 @@ const PF_I18N = {
     textColor: "Text",
     accentColor: "Akzent",
     autoColorHint: "Automatik: Blau = Kühlen, Grün = Entfeuchten, Türkis = beides, Orange = draußen zu warm / geschlossen lassen.",
-    arrangement: "Anordnung",
-    arrangementHint: "Elemente per Drag & Drop verschieben. Die Reihenfolge wird für diese Karte gespeichert. Ausgeblendete Elemente sind weiterhin verschiebbar.",
-    resetArrangement: "Standardreihenfolge",
+    arrangement: "Positionen",
+    arrangementHint: "Elemente frei per Drag & Drop positionieren. Die Positionen werden für das aktuell gewählte Kartenlayout gespeichert.",
+    resetArrangement: "Positionen zurücksetzen",
     hidden: "ausgeblendet",
     texts: "Texte",
     textsHint: "Leer lassen, um den automatisch übersetzten Standardtext zu verwenden. Eigene Texte gelten nur für diese Dashboard-Karte.",
@@ -160,7 +166,10 @@ const PF_I18N = {
     showHumidity: "Show humidity status",
     showCooling: "Show cooling status",
     showRooms: "Show recommended rooms",
-    showReasons: "Show reasons in status tiles",
+    showReasons: "Show reasons",
+    showHumidityReason: "Show humidity reason",
+    showCoolingReason: "Show cooling reason",
+    showStatusState: "Show Ventilate / not needed status",
     colorMode: "Color mode",
     colorAuto: "Automatic by status",
     colorTheme: "Home Assistant theme",
@@ -169,9 +178,9 @@ const PF_I18N = {
     textColor: "Text",
     accentColor: "Accent",
     autoColorHint: "Automatic: blue = cooling, green = dehumidifying, teal = both, orange = outside too warm / keep closed.",
-    arrangement: "Arrangement",
-    arrangementHint: "Drag and drop elements to change their order. The order is stored for this card. Hidden elements can still be moved.",
-    resetArrangement: "Reset order",
+    arrangement: "Positions",
+    arrangementHint: "Freely position elements by drag and drop. Positions are saved for the currently selected card layout.",
+    resetArrangement: "Reset positions",
     hidden: "hidden",
     texts: "Texts",
     textsHint: "Leave empty to use the automatically translated default. Custom texts apply only to this dashboard card.",
@@ -327,6 +336,36 @@ function pfBlockOrder(config) {
   return [...valid, ...PF_BLOCKS.filter((item) => !valid.includes(item))];
 }
 
+const PF_POSITION_DEFAULTS = {
+  full_compact: { title:{x:12,y:50}, advice:{x:72,y:50}, outdoor:{x:30,y:50}, dew:{x:45,y:50}, window:{x:50,y:50}, humidity:{x:48,y:50}, cooling:{x:56,y:50}, rooms:{x:86,y:50} },
+  half_compact: { title:{x:12,y:50}, advice:{x:66,y:50}, outdoor:{x:26,y:50}, dew:{x:42,y:50}, window:{x:50,y:50}, humidity:{x:45,y:50}, cooling:{x:55,y:50}, rooms:{x:84,y:50} },
+  full_medium: { title:{x:14,y:9}, advice:{x:20,y:23}, outdoor:{x:79,y:20}, dew:{x:79,y:47}, window:{x:50,y:47}, humidity:{x:22,y:76}, cooling:{x:56,y:76}, rooms:{x:82,y:78} },
+  half_medium: { title:{x:18,y:8}, advice:{x:27,y:20}, outdoor:{x:73,y:20}, dew:{x:75,y:43}, window:{x:31,y:51}, humidity:{x:69,y:57}, cooling:{x:31,y:82}, rooms:{x:72,y:84} },
+  full_large: { title:{x:13,y:7}, advice:{x:20,y:17}, outdoor:{x:80,y:15}, dew:{x:81,y:34}, window:{x:50,y:43}, humidity:{x:22,y:73}, cooling:{x:53,y:73}, rooms:{x:81,y:75} },
+  half_large: { title:{x:18,y:7}, advice:{x:27,y:16}, outdoor:{x:73,y:16}, dew:{x:75,y:34}, window:{x:32,y:43}, humidity:{x:69,y:48}, cooling:{x:32,y:72}, rooms:{x:70,y:78} },
+};
+
+function pfPositionMap(config, layoutKey) {
+  const defaults = PF_POSITION_DEFAULTS[layoutKey] || PF_POSITION_DEFAULTS[PF_DEFAULT_LAYOUT];
+  const saved = config?.positions?.[layoutKey] || {};
+  const result = {};
+  PF_BLOCKS.forEach((key) => {
+    const fallback = defaults[key] || { x:50, y:50 };
+    const item = saved[key] || {};
+    const x = Number(item.x);
+    const y = Number(item.y);
+    result[key] = {
+      x: Number.isFinite(x) ? Math.max(3, Math.min(97, x)) : fallback.x,
+      y: Number.isFinite(y) ? Math.max(3, Math.min(97, y)) : fallback.y,
+    };
+  });
+  return result;
+}
+
+function pfPositionStyle(position) {
+  return `left:${position.x}%;top:${position.y}%;`;
+}
+
 class PenguFreshCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("pengufresh-card-editor");
@@ -477,7 +516,7 @@ class PenguFreshCard extends HTMLElement {
     }
 
     if (layout.density === "compact") this._renderCompact(data, layout);
-    else this._renderModular(data, layout);
+    else this._renderPositioned(data, layout);
   }
 
   _titleHtml(data, className = "title") {
@@ -517,6 +556,39 @@ class PenguFreshCard extends HTMLElement {
       </ha-card><style>${this._styles()}</style>`;
   }
 
+  _renderPositioned(data, layout) {
+    const a = this._appearance(data);
+    const positions = pfPositionMap(this._config, layout.key);
+    const enabled = {
+      title: pfBool(this._config, "show_title") && Boolean(data.title),
+      advice: pfBool(this._config, "show_advice"),
+      outdoor: pfBool(this._config, "show_outdoor"),
+      dew: pfBool(this._config, "show_outdoor") && pfBool(this._config, "show_dew_point"),
+      window: pfBool(this._config, "show_window"),
+      humidity: pfBool(this._config, "show_humidity"),
+      cooling: pfBool(this._config, "show_cooling"),
+      rooms: pfBool(this._config, "show_rooms"),
+    };
+
+    const modules = {
+      title: () => `<div class="pf-free pf-free-title" style="${pfPositionStyle(positions.title)}"><strong>${esc(data.title)}</strong></div>`,
+      advice: () => `<div class="pf-free pf-free-advice" style="${pfPositionStyle(positions.advice)}"><span class="pf-kicker">${data.shouldOpen ? "↗" : "✓"}</span><strong>${esc(data.advice)}</strong></div>`,
+      outdoor: () => `<div class="pf-free pf-free-outdoor" style="${pfPositionStyle(positions.outdoor)}"><span class="pf-weather-icon">${data.weatherIcon}</span><div><small>${esc(data.labels.outdoor)}</small><strong>${esc(data.outdoorValues || "–")}</strong></div></div>`,
+      dew: () => `<div class="pf-free pf-free-dew" style="${pfPositionStyle(positions.dew)}"><span>💧</span><div><small>${esc(data.labels.dewPoint)}</small><strong>${esc(data.dewValue)}</strong></div></div>`,
+      window: () => `<div class="pf-free pf-free-window" style="${pfPositionStyle(positions.window)}"><div class="window-wrap free-window ${data.shouldOpen ? "open" : "closed"}" aria-label="${esc(data.advice)}">${this._windowHtml()}</div></div>`,
+      humidity: () => `<div class="pf-free pf-free-status" style="${pfPositionStyle(positions.humidity)}">${this._moduleStatus(data.labels.humidity, "💧", data.humOn, data.hum, "humidity", data)}</div>`,
+      cooling: () => `<div class="pf-free pf-free-status" style="${pfPositionStyle(positions.cooling)}">${this._moduleStatus(data.labels.cooling, "🌡️", data.coolOn, data.cool, "cooling", data)}</div>`,
+      rooms: () => `<div class="pf-free pf-free-rooms" style="${pfPositionStyle(positions.rooms)}"><small>${esc(data.labels.rooms)}</small><div class="chips">${data.rooms.length ? data.rooms.map((room) => `<span class="chip">${esc(room)}</span>`).join("") : `<span class="chip muted">${esc(data.t.noNeed)}</span>`}</div></div>`,
+    };
+
+    const html = PF_BLOCKS.filter((key) => enabled[key]).map((key) => modules[key]()).join("");
+    this.shadowRoot.innerHTML = `
+      <ha-card class="pf-card positioned-card ${layout.density} ${layout.width} ${a.classes} ${data.shouldOpen ? "is-open" : "is-closed"}" style="${a.style}">
+        <div class="pf-free-stage">${html}</div>
+      </ha-card><style>${this._styles()}</style>`;
+    this._bindStatusClicks(data);
+  }
+
   _renderModular(data, layout) {
     const a = this._appearance(data);
     const order = pfBlockOrder(this._config);
@@ -552,8 +624,10 @@ class PenguFreshCard extends HTMLElement {
   }
 
   _moduleStatus(label, icon, active, entity, kind, data) {
-    const reason = pfBool(this._config, "show_reasons") ? (entity?.attributes?.recommendation || "") : "";
-    return `<button class="pf-module pf-status-module ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><span class="pf-status-icon">${icon}</span><div><strong>${esc(label)}</strong><span>${active ? esc(data.labels.ventilate) : esc(data.labels.off)}</span>${reason ? `<small>${esc(reason)}</small>` : ""}</div><i></i></button>`;
+    const showReason = kind === "humidity" ? pfBool(this._config, "show_humidity_reason") : pfBool(this._config, "show_cooling_reason");
+    const reason = showReason ? (entity?.attributes?.recommendation || "") : "";
+    const stateText = pfBool(this._config, "show_status_state") ? `<span>${active ? esc(data.labels.ventilate) : esc(data.labels.off)}</span>` : "";
+    return `<button class="pf-module pf-status-module ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><span class="pf-status-icon">${icon}</span><div><strong>${esc(label)}</strong>${stateText}${reason ? `<small>${esc(reason)}</small>` : ""}</div><i></i></button>`;
   }
 
   _renderMedium(data, layout) {
@@ -632,8 +706,10 @@ class PenguFreshCard extends HTMLElement {
   }
 
   _statusTile(label, icon, active, entity, kind, t) {
-    const reason = pfBool(this._config, "show_reasons") ? (entity?.attributes?.recommendation || "") : "";
-    return `<button class="status ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><div class="status-icon">${icon}</div><div class="status-copy"><strong>${esc(label)}</strong><span>${active ? esc(t.ventilate) : esc(t.off)}</span>${reason ? `<small>${esc(reason)}</small>` : ""}</div><div class="dot"></div></button>`;
+    const showReason = kind === "humidity" ? pfBool(this._config, "show_humidity_reason") : pfBool(this._config, "show_cooling_reason");
+    const reason = showReason ? (entity?.attributes?.recommendation || "") : "";
+    const stateText = pfBool(this._config, "show_status_state") ? `<span>${active ? esc(t.ventilate) : esc(t.off)}</span>` : "";
+    return `<button class="status ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><div class="status-icon">${icon}</div><div class="status-copy"><strong>${esc(label)}</strong>${stateText}${reason ? `<small>${esc(reason)}</small>` : ""}</div><div class="dot"></div></button>`;
   }
 
   _styles() {
@@ -703,6 +779,39 @@ class PenguFreshCard extends HTMLElement {
       .modular-card.half.medium .pf-outdoor-module,.modular-card.half.medium .pf-dew-module { min-height:38px; }
       .modular-card.half.medium .pf-advice-module { min-height:38px; }
       .modular-card.half.medium .pf-status-module { min-height:44px; }
+
+      /* Free-position medium/large layout */
+      .positioned-card { position:relative; }
+      .pf-free-stage { position:relative; width:100%; height:100%; min-height:100%; overflow:hidden; }
+      .pf-free { position:absolute; transform:translate(-50%,-50%); z-index:1; box-sizing:border-box; min-width:0; }
+      .pf-free-title { max-width:42%; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .pf-free-advice { width:min(36%,270px); min-height:44px; display:flex; align-items:center; gap:8px; padding:9px 11px; border-radius:12px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.14); }
+      .pf-free-advice strong { min-width:0; font-size:12px; line-height:1.2; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .pf-free-outdoor,.pf-free-dew { width:min(28%,220px); min-height:46px; display:flex; align-items:center; gap:7px; padding:8px 10px; border-radius:12px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.14); }
+      .pf-free-outdoor>div,.pf-free-dew>div { min-width:0; display:grid; }
+      .pf-free-outdoor small,.pf-free-dew small,.pf-free-rooms>small { font-size:9px; opacity:.82; }
+      .pf-free-outdoor strong,.pf-free-dew strong { font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .pf-free-window { width:170px; height:130px; display:grid; place-items:center; }
+      .free-window { width:150px; height:114px; }
+      .pf-free-status { width:min(30%,230px); }
+      .pf-free-status .pf-status-module { width:100%; min-height:58px; }
+      .pf-free-rooms { width:min(38%,300px); padding:9px 10px; border-radius:12px; background:var(--card-background-color); color:var(--primary-text-color); border:1px solid var(--divider-color); }
+      .pf-free-rooms .chips { margin-top:5px; }
+      .color-theme .pf-free-advice,.color-theme .pf-free-outdoor,.color-theme .pf-free-dew { background:color-mix(in srgb,var(--primary-color) 8%,var(--card-background-color)); border-color:var(--divider-color); }
+      .positioned-card.half .pf-free-title { max-width:48%; }
+      .positioned-card.half .pf-free-advice { width:42%; padding:7px 8px; }
+      .positioned-card.half .pf-free-outdoor,.positioned-card.half .pf-free-dew { width:38%; padding:7px 8px; }
+      .positioned-card.half .pf-free-window { width:118px; height:94px; }
+      .positioned-card.half .free-window { width:104px; height:80px; }
+      .positioned-card.half .pf-free-status { width:42%; }
+      .positioned-card.half .pf-free-rooms { width:78%; }
+      .positioned-card.medium .pf-free-window { width:110px; height:86px; }
+      .positioned-card.medium .free-window { width:94px; height:72px; }
+      .positioned-card.medium .pf-free-status .pf-status-module { min-height:48px; padding:7px 8px; }
+      .positioned-card.medium .pf-status-module small { -webkit-line-clamp:1; }
+      .positioned-card.medium .pf-free-advice strong { -webkit-line-clamp:2; }
+      .positioned-card.medium .pf-free-rooms { padding:6px 8px; }
+      .positioned-card.medium .chip { font-size:9px; padding:3px 6px; }
 
       /* Compact */
       .compact-row { min-height:56px; height:100%; padding:7px 12px; box-sizing:border-box; display:flex; align-items:center; gap:10px; }
@@ -901,7 +1010,9 @@ class PenguFreshCardEditor extends HTMLElement {
           ${this._toggle("show_humidity", t.showHumidity)}
           ${this._toggle("show_cooling", t.showCooling)}
           ${this._toggle("show_rooms", t.showRooms)}
-          ${this._toggle("show_reasons", t.showReasons)}
+          ${this._toggle("show_status_state", t.showStatusState)}
+          ${this._toggle("show_humidity_reason", t.showHumidityReason)}
+          ${this._toggle("show_cooling_reason", t.showCoolingReason)}
         </div></section>
 
         <label class="field"><span>${esc(t.customTitle)}</span><input id="title" type="text" value="${esc(this._config.title || "")}" placeholder="${esc(pfCleanInstanceName(instances.find((x) => x.id === currentEntry)?.name || "Wohnung"))}"></label>
@@ -934,8 +1045,8 @@ class PenguFreshCardEditor extends HTMLElement {
           </div>` : ""}
         </section>
 
-        <section><div class="section-head"><h3>${esc(t.arrangement)}</h3><button type="button" id="reset-order" class="text-button">${esc(t.resetArrangement)}</button></div>
-          <div id="layout-builder" class="layout-builder">${this._layoutBuilder(t)}</div>
+        <section><div class="section-head"><h3>${esc(t.arrangement)}</h3><button type="button" id="reset-positions" class="text-button">${esc(t.resetArrangement)}</button></div>
+          <div id="position-stage" class="position-stage ${currentLayout.startsWith("half_") ? "half" : "full"}">${this._positionBuilder(t, currentLayout)}</div>
           <div class="hint">${esc(t.arrangementHint)}</div>
         </section>
       </div>
@@ -957,15 +1068,12 @@ class PenguFreshCardEditor extends HTMLElement {
         .text-field input { min-height:40px; }
         .section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
         .text-button { appearance:none; border:0; background:none; color:var(--primary-color); font:inherit; font-size:12px; cursor:pointer; padding:4px 0; }
-        .layout-builder { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding:8px; border:1px dashed var(--divider-color); border-radius:10px; background:var(--secondary-background-color); }
-        .drag-item { user-select:none; cursor:grab; min-height:36px; display:flex; align-items:center; gap:7px; padding:6px 8px; border:1px solid var(--divider-color); border-radius:9px; background:var(--card-background-color); font-size:12px; }
-        .drag-item:active { cursor:grabbing; }
-        .drag-item.dragging { opacity:.35; }
-        .drag-item.drag-over { outline:2px solid var(--primary-color); outline-offset:1px; }
-        .drag-handle { color:var(--secondary-text-color); letter-spacing:-2px; font-weight:700; }
-        .drag-item .block-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .drag-item .hidden-label { margin-left:auto; font-size:9px; color:var(--secondary-text-color); }
-        .drag-item.is-hidden { opacity:.55; }
+        .position-stage { position:relative; height:250px; overflow:hidden; border:1px dashed var(--divider-color); border-radius:12px; background-color:var(--secondary-background-color); background-image:linear-gradient(to right,color-mix(in srgb,var(--divider-color) 55%,transparent) 1px,transparent 1px),linear-gradient(to bottom,color-mix(in srgb,var(--divider-color) 55%,transparent) 1px,transparent 1px); background-size:24px 24px; touch-action:none; }
+        .position-stage.half { max-width:330px; margin-inline:auto; }
+        .position-label { position:absolute; transform:translate(-50%,-50%); user-select:none; touch-action:none; cursor:grab; padding:7px 11px; border-radius:999px; border:1px solid var(--divider-color); background:var(--card-background-color); color:var(--primary-text-color); box-shadow:0 2px 6px rgba(0,0,0,.08); font-size:11px; font-weight:600; white-space:nowrap; }
+        .position-label:active { cursor:grabbing; box-shadow:0 4px 12px rgba(0,0,0,.14); }
+        .position-label.is-hidden { opacity:.35; border-style:dashed; }
+        .position-label .hidden-label { margin-left:5px; font-size:9px; font-weight:400; color:var(--secondary-text-color); }
         .color-field { display:grid; gap:5px; font-size:11px; color:var(--secondary-text-color); }
         input[type="color"] { width:100%; height:40px; padding:3px; border:1px solid var(--divider-color); border-radius:8px; background:var(--card-background-color); cursor:pointer; }
       </style>`;
@@ -1023,9 +1131,13 @@ class PenguFreshCardEditor extends HTMLElement {
       });
     });
 
-    this._bindDragAndDrop();
-    this.shadowRoot.querySelector("#reset-order")?.addEventListener("click", () => {
-      this._fireConfigChanged({ ...this._config, block_order:[...PF_DEFAULTS.block_order] });
+    this._bindPositionDrag(currentLayout);
+    this.shadowRoot.querySelector("#reset-positions")?.addEventListener("click", () => {
+      const positions = { ...(this._config.positions || {}) };
+      delete positions[currentLayout];
+      const next = { ...this._config, positions };
+      if (!Object.keys(positions).length) delete next.positions;
+      this._fireConfigChanged(next);
     });
   }
 
@@ -1033,30 +1145,44 @@ class PenguFreshCardEditor extends HTMLElement {
     return `<label class="text-field"><span>${esc(label)}</span><input type="text" data-text-setting="${key}" value="${esc(this._config[key] || "")}" placeholder="${esc(placeholder)}"></label>`;
   }
 
-  _layoutBuilder(t) {
+  _positionBuilder(t, layoutKey) {
     const labels = { title:t.blockTitle, advice:t.blockAdvice, outdoor:t.blockOutdoor, dew:t.blockDew, window:t.blockWindow, humidity:t.blockHumidity, cooling:t.blockCooling, rooms:t.blockRooms };
     const visible = { title:pfBool(this._config,"show_title"), advice:pfBool(this._config,"show_advice"), outdoor:pfBool(this._config,"show_outdoor"), dew:pfBool(this._config,"show_dew_point") && pfBool(this._config,"show_outdoor"), window:pfBool(this._config,"show_window"), humidity:pfBool(this._config,"show_humidity"), cooling:pfBool(this._config,"show_cooling"), rooms:pfBool(this._config,"show_rooms") };
-    return pfBlockOrder(this._config).map((key) => `<div class="drag-item ${visible[key] ? "" : "is-hidden"}" draggable="true" data-block="${key}"><span class="drag-handle">⋮⋮</span><span class="block-name">${esc(labels[key])}</span>${visible[key] ? "" : `<span class="hidden-label">${esc(t.hidden)}</span>`}</div>`).join("");
+    const positions = pfPositionMap(this._config, layoutKey);
+    return PF_BLOCKS.map((key) => `<div class="position-label ${visible[key] ? "" : "is-hidden"}" data-block="${key}" style="${pfPositionStyle(positions[key])}">${esc(labels[key])}${visible[key] ? "" : `<span class="hidden-label">${esc(t.hidden)}</span>`}</div>`).join("");
   }
 
-  _bindDragAndDrop() {
-    const builder = this.shadowRoot.querySelector("#layout-builder");
-    if (!builder) return;
-    let dragged = null;
-    builder.querySelectorAll(".drag-item").forEach((item) => {
-      item.addEventListener("dragstart", (event) => { dragged = item; item.classList.add("dragging"); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.dataset.block); });
-      item.addEventListener("dragend", () => { item.classList.remove("dragging"); builder.querySelectorAll(".drag-over").forEach((el) => el.classList.remove("drag-over")); dragged = null; });
-      item.addEventListener("dragover", (event) => { event.preventDefault(); if (!dragged || dragged === item) return; item.classList.add("drag-over"); });
-      item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
-      item.addEventListener("drop", (event) => {
+  _bindPositionDrag(layoutKey) {
+    const stage = this.shadowRoot.querySelector("#position-stage");
+    if (!stage) return;
+    stage.querySelectorAll(".position-label").forEach((item) => {
+      item.addEventListener("pointerdown", (event) => {
         event.preventDefault();
-        item.classList.remove("drag-over");
-        if (!dragged || dragged === item) return;
-        const rect = item.getBoundingClientRect();
-        const before = event.clientY < rect.top + rect.height / 2 || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 4 && event.clientX < rect.left + rect.width / 2);
-        builder.insertBefore(dragged, before ? item : item.nextSibling);
-        const order = [...builder.querySelectorAll(".drag-item")].map((el) => el.dataset.block);
-        this._fireConfigChanged({ ...this._config, block_order:order });
+        item.setPointerCapture?.(event.pointerId);
+        const move = (moveEvent) => {
+          const rect = stage.getBoundingClientRect();
+          if (!rect.width || !rect.height) return;
+          const x = Math.max(3, Math.min(97, ((moveEvent.clientX - rect.left) / rect.width) * 100));
+          const y = Math.max(3, Math.min(97, ((moveEvent.clientY - rect.top) / rect.height) * 100));
+          item.style.left = `${x}%`;
+          item.style.top = `${y}%`;
+          item.dataset.x = String(x);
+          item.dataset.y = String(y);
+        };
+        const end = () => {
+          item.removeEventListener("pointermove", move);
+          item.removeEventListener("pointerup", end);
+          item.removeEventListener("pointercancel", end);
+          const base = pfPositionMap(this._config, layoutKey);
+          const x = Number(item.dataset.x);
+          const y = Number(item.dataset.y);
+          if (Number.isFinite(x) && Number.isFinite(y)) base[item.dataset.block] = { x:Number(x.toFixed(2)), y:Number(y.toFixed(2)) };
+          const positions = { ...(this._config.positions || {}), [layoutKey]:base };
+          this._fireConfigChanged({ ...this._config, positions });
+        };
+        item.addEventListener("pointermove", move);
+        item.addEventListener("pointerup", end);
+        item.addEventListener("pointercancel", end);
       });
     });
   }
