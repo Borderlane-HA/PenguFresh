@@ -1171,8 +1171,40 @@ class PenguFreshCardEditor extends HTMLElement {
     if (!stage) return;
 
     let activeItem = null;
+    let activeBlock = null;
     let activePointerId = null;
     let latestPosition = null;
+    let framePending = false;
+
+    const persistPosition = () => {
+      framePending = false;
+      if (!activeBlock || !latestPosition) return;
+
+      // Keep only explicitly changed positions in the saved config. The card
+      // fills all other blocks from the layout defaults via pfPositionMap().
+      const layoutPositions = {
+        ...((this._config.positions || {})[layoutKey] || {}),
+        [activeBlock]: {
+          x: Number(latestPosition.x.toFixed(2)),
+          y: Number(latestPosition.y.toFixed(2)),
+        },
+      };
+      const positions = {
+        ...(this._config.positions || {}),
+        [layoutKey]: layoutPositions,
+      };
+
+      // Emit while dragging, not only on pointerup. This makes the Home
+      // Assistant preview move live and also avoids losing a drag when the
+      // editor scroll container swallows the final pointerup event.
+      this._fireConfigChanged({ ...this._config, positions });
+    };
+
+    const queuePersist = () => {
+      if (framePending) return;
+      framePending = true;
+      requestAnimationFrame(persistPosition);
+    };
 
     const updatePosition = (event) => {
       if (!activeItem || event.pointerId !== activePointerId) return;
@@ -1183,45 +1215,46 @@ class PenguFreshCardEditor extends HTMLElement {
       latestPosition = { x, y };
       activeItem.style.left = `${x}%`;
       activeItem.style.top = `${y}%`;
+      queuePersist();
     };
 
     const finishDrag = (event) => {
       if (!activeItem || event.pointerId !== activePointerId) return;
-      const item = activeItem;
-      const block = item.dataset.block;
+      updatePosition(event);
+      // Persist synchronously as a final safety net even if an animation-frame
+      // update is still pending.
+      if (latestPosition && activeBlock) persistPosition();
+
       const pointerId = activePointerId;
       activeItem = null;
+      activeBlock = null;
       activePointerId = null;
-      try { stage.releasePointerCapture?.(pointerId); } catch (_) {}
-
-      if (!latestPosition || !block) {
-        latestPosition = null;
-        return;
-      }
-
-      const base = pfPositionMap(this._config, layoutKey);
-      base[block] = {
-        x:Number(latestPosition.x.toFixed(2)),
-        y:Number(latestPosition.y.toFixed(2)),
-      };
       latestPosition = null;
-      const positions = { ...(this._config.positions || {}), [layoutKey]:base };
-      this._fireConfigChanged({ ...this._config, positions });
+      try { stage.releasePointerCapture?.(pointerId); } catch (_) {}
+      window.removeEventListener("pointermove", updatePosition, true);
+      window.removeEventListener("pointerup", finishDrag, true);
+      window.removeEventListener("pointercancel", finishDrag, true);
     };
 
     stage.addEventListener("pointerdown", (event) => {
       const item = event.target.closest?.(".position-label");
       if (!item || !stage.contains(item)) return;
       event.preventDefault();
+      event.stopPropagation();
       activeItem = item;
+      activeBlock = item.dataset.block || null;
       activePointerId = event.pointerId;
       latestPosition = null;
       try { stage.setPointerCapture?.(event.pointerId); } catch (_) {}
+
+      // Listen on window as well as using pointer capture. Home Assistant's
+      // card editor is a scrollable dialog; global listeners make the drag
+      // robust when the pointer leaves the position surface.
+      window.addEventListener("pointermove", updatePosition, true);
+      window.addEventListener("pointerup", finishDrag, true);
+      window.addEventListener("pointercancel", finishDrag, true);
       updatePosition(event);
     });
-    stage.addEventListener("pointermove", updatePosition);
-    stage.addEventListener("pointerup", finishDrag);
-    stage.addEventListener("pointercancel", finishDrag);
   }
 
   _colorField(key, label, value) {
