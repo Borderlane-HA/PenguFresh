@@ -1,0 +1,158 @@
+{
+  "title": "PenguFresh",
+  "config": {
+    "flow_title": "PenguFresh: {name}",
+    "step": {
+      "user": {
+        "title": "Lüftungsbereich anlegen",
+        "description": "Lege einen unabhängigen PenguFresh an. Du kannst mehrere Instanzen erstellen, zum Beispiel für Wohnung, Keller und Garage.",
+        "data": {
+          "name": "Name",
+          "object_type": "Objekttyp"
+        }
+      },
+      "outdoor": {
+        "title": "Außensensoren",
+        "description": "Wähle den Außentemperatur- und Außenfeuchtigkeitssensor als Referenzluft aus.",
+        "data": {
+          "outdoor_temperature": "Außentemperatursensor",
+          "outdoor_humidity": "Außen-Luftfeuchtigkeitssensor"
+        }
+      },
+      "room": {
+        "title": "Innenraum hinzufügen",
+        "description": "Füge mindestens einen Innenraum hinzu. Jeder Innenraum benötigt einen Temperatur- und einen Sensor für relative Luftfeuchtigkeit.",
+        "data": {
+          "room_name": "Raumname",
+          "temperature": "Temperatursensor",
+          "humidity": "Luftfeuchtigkeitssensor",
+          "add_another": "Danach weiteren Raum hinzufügen"
+        }
+      },
+      "settings": {
+        "title": "Lüftungsregeln",
+        "description": "Die Standardwerte sind auf den gewählten Objekttyp abgestimmt. Temperaturwerte werden in der in Home Assistant eingestellten Einheit angezeigt; intern wird einheitlich gerechnet.",
+        "data": {
+          "target_temperature_c": "Zieltemperatur zum Abkühlen",
+          "max_relative_humidity": "Feuchtigkeitsgrenze",
+          "min_temperature_delta_c": "Minimale Temperaturdifferenz innen/außen",
+          "min_absolute_humidity_delta": "Minimaler Vorteil der absoluten Feuchte außen",
+          "temperature_hysteresis_c": "Temperatur-Hysterese",
+          "humidity_hysteresis": "Relative-Feuchte-Hysterese",
+          "absolute_humidity_hysteresis": "Absolute-Feuchte-Hysterese",
+          "temperature_moisture_guard": "Abkühlen blockieren, wenn Außenluft Feuchtigkeit eintragen würde",
+          "update_interval": "Aktualisierungsintervall",
+          "language": "Sprache der Empfehlungstexte"
+        }
+      }
+    },
+    "error": {
+      "room_name_required": "Bitte einen Raumnamen eingeben."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "PenguFresh konfigurieren",
+        "description": "Ändere allgemeine Einstellungen oder Innenräume und speichere anschließend die Änderungen.",
+        "menu_options": {
+          "general": "Allgemeine Einstellungen und Grenzwerte",
+          "rooms": "Innenräume verwalten",
+          "save": "Änderungen speichern"
+        }
+      },
+      "general": {
+        "title": "Allgemeine Einstellungen und Grenzwerte",
+        "description": "Ein anderer Objekttyp ändert dessen profilspezifisches Verhalten. Aktiviere 'Profil-Standardwerte übernehmen', wenn zusätzlich alle Grenzwerte auf die Standards des neuen Profils zurückgesetzt werden sollen.",
+        "data": {
+          "name": "Name",
+          "object_type": "Objekttyp",
+          "outdoor_temperature": "Außentemperatursensor",
+          "outdoor_humidity": "Außen-Luftfeuchtigkeitssensor",
+          "target_temperature_c": "Zieltemperatur zum Abkühlen",
+          "max_relative_humidity": "Feuchtigkeitsgrenze",
+          "min_temperature_delta_c": "Minimale Temperaturdifferenz innen/außen",
+          "min_absolute_humidity_delta": "Minimaler Vorteil der absoluten Feuchte außen",
+          "temperature_hysteresis_c": "Temperatur-Hysterese",
+          "humidity_hysteresis": "Relative-Feuchte-Hysterese",
+          "absolute_humidity_hysteresis": "Absolute-Feuchte-Hysterese",
+          "temperature_moisture_guard": "Abkühlen blockieren, wenn Außenluft Feuchtigkeit eintragen würde",
+          "update_interval": "Aktualisierungsintervall",
+          "language": "Sprache der Empfehlungstexte",
+          "apply_profile_defaults": "Profil-Standardwerte übernehmen"
+        }
+      },
+      "rooms": {
+        "title": "Innenräume",
+        "menu_options": {
+          "add_room": "Innenraum hinzufügen",
+          "edit_room": "Innenraum bearbeiten",
+          "remove_room": "Innenraum löschen",
+          "rooms_back": "Zurück"
+        }
+      },
+      "add_room": {
+        "title": "Innenraum hinzufügen",
+        "data": {
+          "room_name": "Raumname",
+          "temperature": "Temperatursensor",
+          "humidity": "Luftfeuchtigkeitssensor"
+        }
+      },
+      "edit_room": {
+        "title": "Innenraum auswählen",
+        "data": {
+          "room_selection": "Innenraum"
+        }
+      },
+      "edit_room_details": {
+        "title": "Innenraum bearbeiten",
+        "data": {
+          "room_name": "Raumname",
+          "temperature": "Temperatursensor",
+          "humidity": "Luftfeuchtigkeitssensor"
+        }
+      },
+      "remove_room": {
+        "title": "Innenraum löschen",
+        "description": "Der ausgewählte Innenraum wird beim Fortfahren entfernt.",
+        "data": {
+          "room_selection": "Innenraum"
+        }
+      }
+    },
+    "error": {
+      "room_name_required": "Bitte einen Raumnamen eingeben."
+    },
+    "abort": {
+      "last_room": "Mindestens ein Innenraum muss konfiguriert bleiben."
+    }
+  },
+  "selector": {
+    "object_type": {
+      "options": {
+        "apartment": "Wohnung",
+        "basement": "Keller",
+        "garage": "Garage",
+        "room": "Raum / Allgemein"
+      }
+    },
+    "language": {
+      "options": {
+        "auto": "Automatisch (Home-Assistant-Systemsprache)",
+        "de": "Deutsch",
+        "en": "Englisch"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "humidity_ventilation": {
+        "name": "Lüften Feuchtigkeit"
+      },
+      "temperature_ventilation": {
+        "name": "Lüften Temperatur"
+      }
+    }
+  }
+}

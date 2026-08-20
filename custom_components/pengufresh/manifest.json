@@ -1,0 +1,13 @@
+{
+  "domain": "pengufresh",
+  "name": "PenguFresh",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/YOUR_GITHUB_USERNAME/PenguFresh",
+  "integration_type": "helper",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/YOUR_GITHUB_USERNAME/PenguFresh/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

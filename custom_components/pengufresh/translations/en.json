@@ -1,0 +1,158 @@
+{
+  "title": "PenguFresh",
+  "config": {
+    "flow_title": "PenguFresh: {name}",
+    "step": {
+      "user": {
+        "title": "Create ventilation area",
+        "description": "Create an independent ventilation advisor. You can add multiple instances, for example for an apartment, basement and garage.",
+        "data": {
+          "name": "Name",
+          "object_type": "Area type"
+        }
+      },
+      "outdoor": {
+        "title": "Outdoor sensors",
+        "description": "Select the outdoor temperature and humidity sensors used as the reference air.",
+        "data": {
+          "outdoor_temperature": "Outdoor temperature sensor",
+          "outdoor_humidity": "Outdoor humidity sensor"
+        }
+      },
+      "room": {
+        "title": "Add indoor area",
+        "description": "Add at least one indoor area. Each area needs one temperature and one relative humidity sensor.",
+        "data": {
+          "room_name": "Room name",
+          "temperature": "Temperature sensor",
+          "humidity": "Humidity sensor",
+          "add_another": "Add another room afterwards"
+        }
+      },
+      "settings": {
+        "title": "Ventilation rules",
+        "description": "The defaults are tailored to the selected area type. Temperature values are shown in your Home Assistant temperature unit. Calculations are normalized internally.",
+        "data": {
+          "target_temperature_c": "Cooling target temperature",
+          "max_relative_humidity": "Humidity threshold",
+          "min_temperature_delta_c": "Minimum indoor/outdoor temperature difference",
+          "min_absolute_humidity_delta": "Minimum absolute humidity advantage outdoors",
+          "temperature_hysteresis_c": "Temperature hysteresis",
+          "humidity_hysteresis": "Relative humidity hysteresis",
+          "absolute_humidity_hysteresis": "Absolute humidity hysteresis",
+          "temperature_moisture_guard": "Block cooling when outdoor air would add moisture",
+          "update_interval": "Update interval",
+          "language": "Recommendation text language"
+        }
+      }
+    },
+    "error": {
+      "room_name_required": "Please enter a room name."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure PenguFresh",
+        "description": "Change general settings, manage indoor areas, then save your changes.",
+        "menu_options": {
+          "general": "General settings and thresholds",
+          "rooms": "Manage indoor areas",
+          "save": "Save changes"
+        }
+      },
+      "general": {
+        "title": "General settings and thresholds",
+        "description": "Changing the profile changes its profile-specific behavior. Enable 'Apply profile defaults' if you also want to reset all thresholds to that profile's defaults.",
+        "data": {
+          "name": "Name",
+          "object_type": "Area type",
+          "outdoor_temperature": "Outdoor temperature sensor",
+          "outdoor_humidity": "Outdoor humidity sensor",
+          "target_temperature_c": "Cooling target temperature",
+          "max_relative_humidity": "Humidity threshold",
+          "min_temperature_delta_c": "Minimum indoor/outdoor temperature difference",
+          "min_absolute_humidity_delta": "Minimum absolute humidity advantage outdoors",
+          "temperature_hysteresis_c": "Temperature hysteresis",
+          "humidity_hysteresis": "Relative humidity hysteresis",
+          "absolute_humidity_hysteresis": "Absolute humidity hysteresis",
+          "temperature_moisture_guard": "Block cooling when outdoor air would add moisture",
+          "update_interval": "Update interval",
+          "language": "Recommendation text language",
+          "apply_profile_defaults": "Apply profile defaults"
+        }
+      },
+      "rooms": {
+        "title": "Indoor areas",
+        "menu_options": {
+          "add_room": "Add indoor area",
+          "edit_room": "Edit indoor area",
+          "remove_room": "Remove indoor area",
+          "rooms_back": "Back"
+        }
+      },
+      "add_room": {
+        "title": "Add indoor area",
+        "data": {
+          "room_name": "Room name",
+          "temperature": "Temperature sensor",
+          "humidity": "Humidity sensor"
+        }
+      },
+      "edit_room": {
+        "title": "Choose indoor area",
+        "data": {
+          "room_selection": "Indoor area"
+        }
+      },
+      "edit_room_details": {
+        "title": "Edit indoor area",
+        "data": {
+          "room_name": "Room name",
+          "temperature": "Temperature sensor",
+          "humidity": "Humidity sensor"
+        }
+      },
+      "remove_room": {
+        "title": "Remove indoor area",
+        "description": "The selected indoor area will be removed when you continue.",
+        "data": {
+          "room_selection": "Indoor area"
+        }
+      }
+    },
+    "error": {
+      "room_name_required": "Please enter a room name."
+    },
+    "abort": {
+      "last_room": "At least one indoor area must remain configured."
+    }
+  },
+  "selector": {
+    "object_type": {
+      "options": {
+        "apartment": "Apartment",
+        "basement": "Basement",
+        "garage": "Garage",
+        "room": "Room / General"
+      }
+    },
+    "language": {
+      "options": {
+        "auto": "Automatic (Home Assistant system language)",
+        "de": "German",
+        "en": "English"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "humidity_ventilation": {
+        "name": "Ventilate for humidity"
+      },
+      "temperature_ventilation": {
+        "name": "Ventilate for cooling"
+      }
+    }
+  }
+}
