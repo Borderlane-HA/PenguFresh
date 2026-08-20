@@ -30,29 +30,13 @@ Each PenguFresh instance is additionally represented as a logical PenguFresh ser
 
 ## Dashboard card
 
-PenguFresh includes its own dashboard card. After installation and a Home Assistant restart, open a dashboard and select:
+PenguFresh includes a compact dashboard card. After installation and a Home Assistant restart, open a dashboard and select:
 
 **Edit dashboard → Add card → PenguFresh**
 
-Choose a PenguFresh instance in the card editor. The card shows the outdoor climate, recommended rooms, humidity/cooling status and an animated window that opens or closes according to the current ventilation recommendation.
+Choose a PenguFresh instance and one of two fixed layouts:
 
-The card editor also provides six layout presets for Sections dashboards:
+- **Small – 6 columns × 1 row:** icon-focused view for the two recommendations.
+- **Large – 6 columns × 2 rows:** the same two recommendations with short text labels.
 
-- Full width: Compact (1 row), Medium (3 rows), Large (6 rows)
-- Half width: Compact (6 columns × 1 row), Medium (6 columns × 3 rows), Large (6 columns × 6 rows)
-
-Smaller layouts intentionally show fewer details. Manual card resizing is still possible; PenguFresh adapts its information density to the selected grid size.
-
-The visual card editor also lets you choose which elements are shown (title, recommendation, outdoor values, dew point, animated window, humidity/cooling status, recommended rooms and detailed reasons). The PenguFresh branding is hidden in the dashboard card by default; an optional room/instance title can be enabled.
-
-From version **0.2.8**, medium and large cards use a **free-position editor**. Only content modules that are enabled for the card are shown in the position editor. Drag the visible labels freely on the layout surface; positions are stored separately for each layout preset. From **0.2.9**, the dashboard preview follows the drag live and the position is saved continuously while moving. Compact 1-row layouts continue to use their optimized automatic arrangement.
-
-Detailed humidity and cooling reasons are **hidden by default** and can be enabled separately. The short `Ventilate / not needed` status can also be hidden. The **Texts** section allows recommendation messages and short labels/status texts to be overridden per dashboard card. Empty fields use PenguFresh's automatic German/English translations.
-
-Three color modes are available: **automatic status colors**, **Home Assistant theme**, or **custom colors** using color pickers for background, text and accent. Automatic mode changes the card color depending on the current recommendation, for example cooling, dehumidifying, both, or keeping the windows closed because outdoor air is too warm.
-
-The card editor does not refresh its controls on normal Home Assistant state updates, so open dropdowns remain stable while sensor values update in the background.
-
-### If the card was installed before 0.2.2
-
-After updating, restart Home Assistant and perform a full browser reload. The card configuration must contain `type: custom:pengufresh-card`; PenguFresh adds this automatically from 0.2.2 onward.
+The card intentionally focuses only on **Ventilate for heat** and **Ventilate for humidity**. Detailed values remain available on the generated Home Assistant entities and can still be used in automations and templates.
