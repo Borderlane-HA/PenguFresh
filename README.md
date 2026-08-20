@@ -2,12 +2,14 @@
 
 **PenguFresh** is a Home Assistant custom integration that helps determine when ventilation is useful for **humidity control** or **cooling**.
 
-It compares indoor and outdoor temperature and humidity, uses absolute humidity and dew point for moisture decisions, supports Apartment, Basement, Garage and Room profiles, multiple indoor sensors, multiple instances, and automatic °C/°F handling.
+It compares indoor and outdoor temperature and humidity, uses **absolute humidity** and **dew point** for moisture decisions, supports **Apartment, Basement, Garage and Room** profiles, multiple indoor sensors, multiple instances, and automatic **°C/°F** handling.
 
-Each instance provides two binary sensors that can be used directly in dashboards and automations:
+Each instance creates two binary sensors:
 
 - **Ventilate for humidity**
 - **Ventilate for cooling**
+
+These sensors can be used directly in dashboards and automations.
 
 ## Installation via HACS
 
@@ -20,4 +22,12 @@ Each instance provides two binary sensors that can be used directly in dashboard
 7. Go to **Settings → Devices & services → Add integration**.
 8. Search for **PenguFresh** and complete the setup.
 
-Configuration can be changed later via **Settings → Devices & services → PenguFresh → Configure**.
+## Where to find and manage PenguFresh
+
+PenguFresh is a **helper integration**. After setup, your PenguFresh instances can be found and managed under:
+
+**Settings → Devices & services → Helpers**
+
+There you can edit or remove existing instances.
+
+Depending on the Home Assistant view, PenguFresh may not behave like a classic hardware integration card under **Devices & services → Integrations**. The created sensors are still normal Home Assistant entities and remain available for dashboards, automations and templates.
