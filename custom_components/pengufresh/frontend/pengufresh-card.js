@@ -1,4 +1,4 @@
-const PENGUFRESH_CARD_VERSION = "0.2.5";
+const PENGUFRESH_CARD_VERSION = "0.2.6";
 
 const PF_DEFAULT_LAYOUT = "full_large";
 const PF_LAYOUTS = {
@@ -24,6 +24,18 @@ const PF_DEFAULTS = {
   background_color: "#0f766e",
   text_color: "#ffffff",
   accent_color: "#67e8f9",
+  block_order: ["title", "advice", "outdoor", "dew", "window", "humidity", "cooling", "rooms"],
+  text_open_both: "",
+  text_open_humidity: "",
+  text_open_cooling: "",
+  text_keep_closed: "",
+  text_outdoor: "",
+  text_dew_point: "",
+  text_humidity: "",
+  text_cooling: "",
+  text_rooms: "",
+  text_ventilate: "",
+  text_off: "",
 };
 
 const PF_I18N = {
@@ -79,6 +91,31 @@ const PF_I18N = {
     textColor: "Text",
     accentColor: "Akzent",
     autoColorHint: "Automatik: Blau = Kühlen, Grün = Entfeuchten, Türkis = beides, Orange = draußen zu warm / geschlossen lassen.",
+    arrangement: "Anordnung",
+    arrangementHint: "Elemente per Drag & Drop verschieben. Die Reihenfolge wird für diese Karte gespeichert. Ausgeblendete Elemente sind weiterhin verschiebbar.",
+    resetArrangement: "Standardreihenfolge",
+    hidden: "ausgeblendet",
+    texts: "Texte",
+    textsHint: "Leer lassen, um den automatisch übersetzten Standardtext zu verwenden. Eigene Texte gelten nur für diese Dashboard-Karte.",
+    textOpenBoth: "Empfehlung: Kühlen + Entfeuchten",
+    textOpenHumidity: "Empfehlung: Entfeuchten",
+    textOpenCooling: "Empfehlung: Kühlen",
+    textKeepClosed: "Empfehlung: Fenster geschlossen",
+    textOutdoor: "Bezeichnung Außenwerte",
+    textDewPoint: "Bezeichnung Taupunkt",
+    textHumidity: "Bezeichnung Feuchtigkeit",
+    textCooling: "Bezeichnung Abkühlen",
+    textRooms: "Bezeichnung Räume",
+    textVentilate: "Status aktiv",
+    textOff: "Status inaktiv",
+    blockTitle: "Titel",
+    blockAdvice: "Empfehlung",
+    blockOutdoor: "Außenwerte",
+    blockDew: "Taupunkt",
+    blockWindow: "Fenster",
+    blockHumidity: "Feuchtigkeit",
+    blockCooling: "Abkühlen",
+    blockRooms: "Räume",
   },
   en: {
     openBoth: "Ventilate now – cool & dehumidify",
@@ -132,6 +169,31 @@ const PF_I18N = {
     textColor: "Text",
     accentColor: "Accent",
     autoColorHint: "Automatic: blue = cooling, green = dehumidifying, teal = both, orange = outside too warm / keep closed.",
+    arrangement: "Arrangement",
+    arrangementHint: "Drag and drop elements to change their order. The order is stored for this card. Hidden elements can still be moved.",
+    resetArrangement: "Reset order",
+    hidden: "hidden",
+    texts: "Texts",
+    textsHint: "Leave empty to use the automatically translated default. Custom texts apply only to this dashboard card.",
+    textOpenBoth: "Advice: cool + dehumidify",
+    textOpenHumidity: "Advice: dehumidify",
+    textOpenCooling: "Advice: cool",
+    textKeepClosed: "Advice: keep windows closed",
+    textOutdoor: "Outdoor label",
+    textDewPoint: "Dew point label",
+    textHumidity: "Humidity label",
+    textCooling: "Cooling label",
+    textRooms: "Rooms label",
+    textVentilate: "Active status",
+    textOff: "Inactive status",
+    blockTitle: "Title",
+    blockAdvice: "Advice",
+    blockOutdoor: "Outdoor values",
+    blockDew: "Dew point",
+    blockWindow: "Window",
+    blockHumidity: "Humidity",
+    blockCooling: "Cooling",
+    blockRooms: "Rooms",
   },
 };
 
@@ -252,6 +314,19 @@ function pfSafeColor(value, fallback) {
   return /^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback;
 }
 
+const PF_BLOCKS = ["title", "advice", "outdoor", "dew", "window", "humidity", "cooling", "rooms"];
+
+function pfCustomText(config, key, fallback) {
+  const value = String(config?.[key] ?? "").trim();
+  return value || fallback;
+}
+
+function pfBlockOrder(config) {
+  const raw = Array.isArray(config?.block_order) ? config.block_order : PF_DEFAULTS.block_order;
+  const valid = raw.filter((item, index) => PF_BLOCKS.includes(item) && raw.indexOf(item) === index);
+  return [...valid, ...PF_BLOCKS.filter((item) => !valid.includes(item))];
+}
+
 class PenguFreshCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("pengufresh-card-editor");
@@ -323,11 +398,21 @@ class PenguFreshCard extends HTMLElement {
     const instanceName = pfCleanInstanceName(attrs.pengufresh_instance || "");
     const title = this._config.title || instanceName;
 
-    let advice = t.keepClosed;
+    const labels = {
+      outdoor: pfCustomText(this._config, "text_outdoor", t.outdoor),
+      dewPoint: pfCustomText(this._config, "text_dew_point", t.dewPoint),
+      humidity: pfCustomText(this._config, "text_humidity", t.humidity),
+      cooling: pfCustomText(this._config, "text_cooling", t.cooling),
+      rooms: pfCustomText(this._config, "text_rooms", t.rooms),
+      ventilate: pfCustomText(this._config, "text_ventilate", t.ventilate),
+      off: pfCustomText(this._config, "text_off", t.off),
+    };
+
+    let advice = pfCustomText(this._config, "text_keep_closed", t.keepClosed);
     if (!available) advice = t.unavailable;
-    else if (humOn && coolOn) advice = t.openBoth;
-    else if (humOn) advice = t.openHumidity;
-    else if (coolOn) advice = t.openCooling;
+    else if (humOn && coolOn) advice = pfCustomText(this._config, "text_open_both", t.openBoth);
+    else if (humOn) advice = pfCustomText(this._config, "text_open_humidity", t.openHumidity);
+    else if (coolOn) advice = pfCustomText(this._config, "text_open_cooling", t.openCooling);
 
     const outTemp = attrs.outdoor_temperature;
     const outTempUnit = attrs.outdoor_temperature_unit || "°C";
@@ -362,7 +447,7 @@ class PenguFreshCard extends HTMLElement {
     return {
       t, hum, cool, available, humOn, coolOn, shouldOpen, attrs, title, advice,
       outTemp, outTempUnit, outRh, dewValue, weatherIcon, tempLabel, moistureLabel,
-      rooms, outdoorValues, statusClass,
+      rooms, outdoorValues, statusClass, labels,
     };
   }
 
@@ -392,8 +477,7 @@ class PenguFreshCard extends HTMLElement {
     }
 
     if (layout.density === "compact") this._renderCompact(data, layout);
-    else if (layout.density === "medium") this._renderMedium(data, layout);
-    else this._renderLarge(data, layout);
+    else this._renderModular(data, layout);
   }
 
   _titleHtml(data, className = "title") {
@@ -408,26 +492,68 @@ class PenguFreshCard extends HTMLElement {
 
   _renderCompact(data, layout) {
     const a = this._appearance(data);
-    const showOutdoor = pfBool(this._config, "show_outdoor");
-    const showHumidity = pfBool(this._config, "show_humidity");
-    const showCooling = pfBool(this._config, "show_cooling");
-    const showAdvice = pfBool(this._config, "show_advice");
-    const action = data.shouldOpen ? data.t.ventilate : data.t.closed;
+    const enabled = {
+      title: pfBool(this._config, "show_title") && Boolean(data.title),
+      advice: pfBool(this._config, "show_advice"),
+      outdoor: pfBool(this._config, "show_outdoor"),
+      humidity: pfBool(this._config, "show_humidity"),
+      cooling: pfBool(this._config, "show_cooling"),
+    };
+    const action = data.shouldOpen ? data.labels.ventilate : data.t.closed;
+    const parts = {
+      title: () => `<div class="compact-title">${esc(data.title)}</div>`,
+      outdoor: () => `<div class="compact-weather"><span>${data.weatherIcon}</span><strong>${esc(data.outdoorValues || "–")}</strong></div>`,
+      humidity: () => `<span class="mini-flag ${data.humOn ? "active" : ""}" title="${esc(data.labels.humidity)}">💧</span>`,
+      cooling: () => `<span class="mini-flag ${data.coolOn ? "active" : ""}" title="${esc(data.labels.cooling)}">🌡️</span>`,
+      advice: () => `<div class="compact-action ${data.shouldOpen ? "active" : "inactive"}" title="${esc(data.advice)}"><span>${data.shouldOpen ? "↗" : "✓"}</span><strong>${esc(enabled.advice ? data.advice : action)}</strong></div>`,
+    };
+    const order = pfBlockOrder(this._config).filter((key) => enabled[key] && parts[key]);
+    if (!order.includes("advice")) order.push("advice");
+    const html = order.map((key) => parts[key]()).join("");
 
     this.shadowRoot.innerHTML = `
       <ha-card class="pf-card compact-card ${layout.width} ${a.classes}" style="${a.style}">
-        <div class="compact-row">
-          ${this._titleHtml(data, "compact-title")}
-          ${showOutdoor ? `<div class="compact-weather"><span>${data.weatherIcon}</span><strong>${esc(data.outdoorValues || "–")}</strong></div>` : ""}
-          ${(showHumidity || showCooling) ? `<div class="compact-flags">
-            ${showHumidity ? `<span class="mini-flag ${data.humOn ? "active" : ""}" title="${esc(data.t.humidity)}">💧</span>` : ""}
-            ${showCooling ? `<span class="mini-flag ${data.coolOn ? "active" : ""}" title="${esc(data.t.cooling)}">🌡️</span>` : ""}
-          </div>` : ""}
-          <div class="compact-action ${data.shouldOpen ? "active" : "inactive"}" title="${esc(data.advice)}">
-            <span>${data.shouldOpen ? "↗" : "✓"}</span><strong>${esc(showAdvice ? data.advice : action)}</strong>
-          </div>
-        </div>
+        <div class="compact-row">${html}</div>
       </ha-card><style>${this._styles()}</style>`;
+  }
+
+  _renderModular(data, layout) {
+    const a = this._appearance(data);
+    const order = pfBlockOrder(this._config);
+    const enabled = {
+      title: pfBool(this._config, "show_title") && Boolean(data.title),
+      advice: pfBool(this._config, "show_advice"),
+      outdoor: pfBool(this._config, "show_outdoor"),
+      dew: pfBool(this._config, "show_outdoor") && pfBool(this._config, "show_dew_point"),
+      window: pfBool(this._config, "show_window"),
+      humidity: pfBool(this._config, "show_humidity"),
+      cooling: pfBool(this._config, "show_cooling"),
+      rooms: pfBool(this._config, "show_rooms") && layout.density === "large",
+    };
+
+    const modules = {
+      title: () => `<div class="pf-module pf-title-module"><strong>${esc(data.title)}</strong></div>`,
+      advice: () => `<div class="pf-module pf-advice-module"><span class="pf-kicker">${data.shouldOpen ? "↗" : "✓"}</span><strong>${esc(data.advice)}</strong></div>`,
+      outdoor: () => `<div class="pf-module pf-outdoor-module"><span class="pf-weather-icon">${data.weatherIcon}</span><div><small>${esc(data.labels.outdoor)}</small><strong>${esc(data.outdoorValues || "–")}</strong></div></div>`,
+      dew: () => `<div class="pf-module pf-dew-module"><span>💧</span><div><small>${esc(data.labels.dewPoint)}</small><strong>${esc(data.dewValue)}</strong></div></div>`,
+      window: () => `<div class="pf-module pf-window-module"><div class="window-wrap modular-window ${data.shouldOpen ? "open" : "closed"}" aria-label="${esc(data.advice)}">${this._windowHtml()}</div></div>`,
+      humidity: () => this._moduleStatus(data.labels.humidity, "💧", data.humOn, data.hum, "humidity", data),
+      cooling: () => this._moduleStatus(data.labels.cooling, "🌡️", data.coolOn, data.cool, "cooling", data),
+      rooms: () => `<div class="pf-module pf-rooms-module"><small>${esc(data.labels.rooms)}</small><div class="chips">${data.rooms.length ? data.rooms.map((room) => `<span class="chip">${esc(room)}</span>`).join("") : `<span class="chip muted">${esc(data.t.noNeed)}</span>`}</div></div>`,
+    };
+
+    const html = order.filter((key) => enabled[key]).map((key) => modules[key]()).join("");
+
+    this.shadowRoot.innerHTML = `
+      <ha-card class="pf-card modular-card ${layout.density} ${layout.width} ${a.classes} ${data.shouldOpen ? "is-open" : "is-closed"}" style="${a.style}">
+        <div class="pf-modules">${html}</div>
+      </ha-card><style>${this._styles()}</style>`;
+    this._bindStatusClicks(data);
+  }
+
+  _moduleStatus(label, icon, active, entity, kind, data) {
+    const reason = pfBool(this._config, "show_reasons") ? (entity?.attributes?.recommendation || "") : "";
+    return `<button class="pf-module pf-status-module ${active ? "active" : "inactive"}" data-kind="${kind}" ${entity ? "" : "disabled"}><span class="pf-status-icon">${icon}</span><div><strong>${esc(label)}</strong><span>${active ? esc(data.labels.ventilate) : esc(data.labels.off)}</span>${reason ? `<small>${esc(reason)}</small>` : ""}</div><i></i></button>`;
   }
 
   _renderMedium(data, layout) {
@@ -529,6 +655,54 @@ class PenguFreshCard extends HTMLElement {
       .color-theme .hero, .color-theme .medium-hero { background:color-mix(in srgb,var(--primary-color) 10%,var(--card-background-color)); }
       .color-custom .hero, .color-custom .medium-hero { background:transparent; }
       .color-auto .hero, .color-auto .medium-hero { background:transparent; }
+
+      /* Modular medium/large layout */
+      .modular-card { padding:0; }
+      .pf-modules { height:100%; box-sizing:border-box; padding:10px; display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); grid-auto-flow:row dense; align-content:start; gap:8px; overflow:hidden; }
+      .pf-module { box-sizing:border-box; min-width:0; border-radius:12px; }
+      .pf-title-module { grid-column:span 12; padding:5px 8px 0; font-size:14px; }
+      .pf-advice-module { grid-column:span 7; min-height:52px; display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.14); }
+      .pf-advice-module strong { min-width:0; font-size:13px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .pf-kicker { flex:0 0 auto; width:24px; height:24px; display:grid; place-items:center; border-radius:8px; background:rgba(255,255,255,.16); }
+      .pf-outdoor-module,.pf-dew-module { grid-column:span 5; min-height:52px; display:flex; align-items:center; gap:8px; padding:9px 11px; background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.14); }
+      .pf-outdoor-module div,.pf-dew-module div { min-width:0; display:grid; }
+      .pf-outdoor-module small,.pf-dew-module small,.pf-rooms-module>small { font-size:10px; opacity:.82; }
+      .pf-outdoor-module strong,.pf-dew-module strong { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .pf-weather-icon { font-size:20px; }
+      .pf-window-module { grid-column:span 5; grid-row:span 2; min-height:116px; display:grid; place-items:center; padding:6px; background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.12); }
+      .modular-window { width:112px; height:86px; }
+      .pf-status-module { appearance:none; grid-column:span 6; min-height:68px; padding:9px 10px; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; gap:8px; border:1px solid var(--divider-color); background:var(--card-background-color); color:var(--primary-text-color); text-align:left; cursor:pointer; font:inherit; }
+      .pf-status-module>div { min-width:0; display:grid; gap:1px; }
+      .pf-status-module strong { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .pf-status-module span:not(.pf-status-icon) { font-size:10px; color:var(--secondary-text-color); }
+      .pf-status-module small { margin-top:3px; font-size:9.5px; line-height:1.2; color:var(--secondary-text-color); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      .pf-status-icon { font-size:18px; }
+      .pf-status-module>i { width:8px; height:8px; margin-top:3px; border-radius:50%; background:var(--disabled-text-color); }
+      .pf-status-module.active>i { background:var(--success-color,#43a047); }
+      .pf-rooms-module { grid-column:span 12; padding:9px 10px; background:var(--card-background-color); color:var(--primary-text-color); border:1px solid var(--divider-color); }
+      .pf-rooms-module .chips { margin-top:5px; }
+      .color-theme .pf-advice-module,.color-theme .pf-outdoor-module,.color-theme .pf-dew-module,.color-theme .pf-window-module { background:color-mix(in srgb,var(--primary-color) 8%,var(--card-background-color)); border-color:var(--divider-color); }
+      .color-custom .pf-status-module,.color-custom .pf-rooms-module,.color-auto .pf-status-module,.color-auto .pf-rooms-module { color:var(--primary-text-color); }
+      .modular-card.medium .pf-modules { padding:8px; gap:7px; }
+      .modular-card.medium .pf-title-module { display:none; }
+      .modular-card.medium .pf-advice-module { grid-column:span 7; min-height:45px; padding:7px 9px; }
+      .modular-card.medium .pf-outdoor-module,.modular-card.medium .pf-dew-module { min-height:45px; padding:7px 9px; }
+      .modular-card.medium .pf-window-module { grid-column:span 5; grid-row:span 2; min-height:94px; }
+      .modular-card.medium .modular-window { width:78px; height:60px; }
+      .modular-card.medium .pf-status-module { min-height:53px; padding:7px 8px; }
+      .modular-card.medium .pf-status-module small { display:none; }
+      .modular-card.half .pf-modules { grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; padding:7px; }
+      .modular-card.half .pf-title-module { grid-column:span 6; }
+      .modular-card.half .pf-advice-module { grid-column:span 6; }
+      .modular-card.half .pf-outdoor-module,.modular-card.half .pf-dew-module { grid-column:span 3; }
+      .modular-card.half .pf-window-module { grid-column:span 3; min-height:86px; }
+      .modular-card.half .pf-status-module { grid-column:span 3; min-height:53px; }
+      .modular-card.half .pf-rooms-module { grid-column:span 6; }
+      .modular-card.half.medium .pf-window-module { min-height:65px; }
+      .modular-card.half.medium .modular-window { width:58px; height:45px; }
+      .modular-card.half.medium .pf-outdoor-module,.modular-card.half.medium .pf-dew-module { min-height:38px; }
+      .modular-card.half.medium .pf-advice-module { min-height:38px; }
+      .modular-card.half.medium .pf-status-module { min-height:44px; }
 
       /* Compact */
       .compact-row { min-height:56px; height:100%; padding:7px 12px; box-sizing:border-box; display:flex; align-items:center; gap:10px; }
@@ -732,6 +906,20 @@ class PenguFreshCardEditor extends HTMLElement {
 
         <label class="field"><span>${esc(t.customTitle)}</span><input id="title" type="text" value="${esc(this._config.title || "")}" placeholder="${esc(pfCleanInstanceName(instances.find((x) => x.id === currentEntry)?.name || "Wohnung"))}"></label>
 
+        <section><h3>${esc(t.texts)}</h3><div class="text-grid">
+          ${this._textField("text_open_both", t.textOpenBoth, t.openBoth)}
+          ${this._textField("text_open_humidity", t.textOpenHumidity, t.openHumidity)}
+          ${this._textField("text_open_cooling", t.textOpenCooling, t.openCooling)}
+          ${this._textField("text_keep_closed", t.textKeepClosed, t.keepClosed)}
+          ${this._textField("text_outdoor", t.textOutdoor, t.outdoor)}
+          ${this._textField("text_dew_point", t.textDewPoint, t.dewPoint)}
+          ${this._textField("text_humidity", t.textHumidity, t.humidity)}
+          ${this._textField("text_cooling", t.textCooling, t.cooling)}
+          ${this._textField("text_rooms", t.textRooms, t.rooms)}
+          ${this._textField("text_ventilate", t.textVentilate, t.ventilate)}
+          ${this._textField("text_off", t.textOff, t.off)}
+        </div><div class="hint">${esc(t.textsHint)}</div></section>
+
         <section><h3>${esc(t.colors)}</h3>
           <label class="field"><span>${esc(t.colorMode)}</span><select id="color-mode">
             <option value="auto" ${colorMode === "auto" ? "selected" : ""}>${esc(t.colorAuto)}</option>
@@ -744,6 +932,11 @@ class PenguFreshCardEditor extends HTMLElement {
             ${this._colorField("text_color", t.textColor, pfValue(this._config,"text_color"))}
             ${this._colorField("accent_color", t.accentColor, pfValue(this._config,"accent_color"))}
           </div>` : ""}
+        </section>
+
+        <section><div class="section-head"><h3>${esc(t.arrangement)}</h3><button type="button" id="reset-order" class="text-button">${esc(t.resetArrangement)}</button></div>
+          <div id="layout-builder" class="layout-builder">${this._layoutBuilder(t)}</div>
+          <div class="hint">${esc(t.arrangementHint)}</div>
         </section>
       </div>
       <style>
@@ -758,6 +951,21 @@ class PenguFreshCardEditor extends HTMLElement {
         .toggle input { width:17px; height:17px; accent-color:var(--primary-color); }
         .hint { font-size:12px; color:var(--secondary-text-color); line-height:1.4; }
         .color-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+        .text-grid { display:grid; gap:8px; }
+        .text-field { display:grid; gap:4px; }
+        .text-field span { font-size:11px; color:var(--secondary-text-color); }
+        .text-field input { min-height:40px; }
+        .section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .text-button { appearance:none; border:0; background:none; color:var(--primary-color); font:inherit; font-size:12px; cursor:pointer; padding:4px 0; }
+        .layout-builder { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding:8px; border:1px dashed var(--divider-color); border-radius:10px; background:var(--secondary-background-color); }
+        .drag-item { user-select:none; cursor:grab; min-height:36px; display:flex; align-items:center; gap:7px; padding:6px 8px; border:1px solid var(--divider-color); border-radius:9px; background:var(--card-background-color); font-size:12px; }
+        .drag-item:active { cursor:grabbing; }
+        .drag-item.dragging { opacity:.35; }
+        .drag-item.drag-over { outline:2px solid var(--primary-color); outline-offset:1px; }
+        .drag-handle { color:var(--secondary-text-color); letter-spacing:-2px; font-weight:700; }
+        .drag-item .block-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .drag-item .hidden-label { margin-left:auto; font-size:9px; color:var(--secondary-text-color); }
+        .drag-item.is-hidden { opacity:.55; }
         .color-field { display:grid; gap:5px; font-size:11px; color:var(--secondary-text-color); }
         input[type="color"] { width:100%; height:40px; padding:3px; border:1px solid var(--divider-color); border-radius:8px; background:var(--card-background-color); cursor:pointer; }
       </style>`;
@@ -802,6 +1010,53 @@ class PenguFreshCardEditor extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-color]").forEach((input) => {
       input.addEventListener("change", (event) => {
         this._fireConfigChanged({ ...this._config, [event.target.dataset.color]:event.target.value });
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-text-setting]").forEach((input) => {
+      input.addEventListener("change", (event) => {
+        const key = event.target.dataset.textSetting;
+        const value = event.target.value.trim();
+        const next = { ...this._config };
+        if (value) next[key] = value; else delete next[key];
+        this._fireConfigChanged(next);
+      });
+    });
+
+    this._bindDragAndDrop();
+    this.shadowRoot.querySelector("#reset-order")?.addEventListener("click", () => {
+      this._fireConfigChanged({ ...this._config, block_order:[...PF_DEFAULTS.block_order] });
+    });
+  }
+
+  _textField(key, label, placeholder) {
+    return `<label class="text-field"><span>${esc(label)}</span><input type="text" data-text-setting="${key}" value="${esc(this._config[key] || "")}" placeholder="${esc(placeholder)}"></label>`;
+  }
+
+  _layoutBuilder(t) {
+    const labels = { title:t.blockTitle, advice:t.blockAdvice, outdoor:t.blockOutdoor, dew:t.blockDew, window:t.blockWindow, humidity:t.blockHumidity, cooling:t.blockCooling, rooms:t.blockRooms };
+    const visible = { title:pfBool(this._config,"show_title"), advice:pfBool(this._config,"show_advice"), outdoor:pfBool(this._config,"show_outdoor"), dew:pfBool(this._config,"show_dew_point") && pfBool(this._config,"show_outdoor"), window:pfBool(this._config,"show_window"), humidity:pfBool(this._config,"show_humidity"), cooling:pfBool(this._config,"show_cooling"), rooms:pfBool(this._config,"show_rooms") };
+    return pfBlockOrder(this._config).map((key) => `<div class="drag-item ${visible[key] ? "" : "is-hidden"}" draggable="true" data-block="${key}"><span class="drag-handle">⋮⋮</span><span class="block-name">${esc(labels[key])}</span>${visible[key] ? "" : `<span class="hidden-label">${esc(t.hidden)}</span>`}</div>`).join("");
+  }
+
+  _bindDragAndDrop() {
+    const builder = this.shadowRoot.querySelector("#layout-builder");
+    if (!builder) return;
+    let dragged = null;
+    builder.querySelectorAll(".drag-item").forEach((item) => {
+      item.addEventListener("dragstart", (event) => { dragged = item; item.classList.add("dragging"); event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", item.dataset.block); });
+      item.addEventListener("dragend", () => { item.classList.remove("dragging"); builder.querySelectorAll(".drag-over").forEach((el) => el.classList.remove("drag-over")); dragged = null; });
+      item.addEventListener("dragover", (event) => { event.preventDefault(); if (!dragged || dragged === item) return; item.classList.add("drag-over"); });
+      item.addEventListener("dragleave", () => item.classList.remove("drag-over"));
+      item.addEventListener("drop", (event) => {
+        event.preventDefault();
+        item.classList.remove("drag-over");
+        if (!dragged || dragged === item) return;
+        const rect = item.getBoundingClientRect();
+        const before = event.clientY < rect.top + rect.height / 2 || (Math.abs(event.clientY - (rect.top + rect.height / 2)) < rect.height / 4 && event.clientX < rect.left + rect.width / 2);
+        builder.insertBefore(dragged, before ? item : item.nextSibling);
+        const order = [...builder.querySelectorAll(".drag-item")].map((el) => el.dataset.block);
+        this._fireConfigChanged({ ...this._config, block_order:order });
       });
     });
   }
