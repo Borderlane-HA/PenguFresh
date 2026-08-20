@@ -71,7 +71,8 @@ class PenguFreshBinarySensor(CoordinatorEntity[PenguFreshCoordinator], BinarySen
             entry_type=DeviceEntryType.SERVICE,
             name=self.entry.title,
             manufacturer="PenguFresh",
-            model="Calculated ventilation helper",
+            model="Ventilation advisor",
+            configuration_url="homeassistant://navigate/config/helpers",
         )
 
     @property
@@ -100,6 +101,8 @@ class PenguFreshBinarySensor(CoordinatorEntity[PenguFreshCoordinator], BinarySen
         unit = self._temperature_unit()
         language = self._language()
         return {
+            "pengufresh_instance": self.entry.title,
+            "pengufresh_entry_id": self.entry.entry_id,
             "profile": TEXT[language]["profiles"].get(data["profile"], data["profile"]),
             "profile_code": data["profile"],
             "update_interval_minutes": data["update_interval"],
