@@ -36,6 +36,13 @@ PenguFresh includes its own dashboard card. After installation and a Home Assist
 
 Choose a PenguFresh instance in the card editor. The card shows the outdoor climate, recommended rooms, humidity/cooling status and an animated window that opens or closes according to the current ventilation recommendation.
 
+The card editor also provides six layout presets for Sections dashboards:
+
+- Full width: Compact (1 row), Medium (3 rows), Large (6 rows)
+- Half width: Compact (6 columns × 1 row), Medium (6 columns × 3 rows), Large (6 columns × 6 rows)
+
+Smaller layouts intentionally show fewer details. Manual card resizing is still possible; PenguFresh adapts its information density to the selected grid size.
+
 ### If the card was installed before 0.2.2
 
 After updating, restart Home Assistant and perform a full browser reload. The card configuration must contain `type: custom:pengufresh-card`; PenguFresh adds this automatically from 0.2.2 onward.
